@@ -45,10 +45,12 @@ class VerifySeo
     check_llms_full_txt if @config["check_llms_full_txt"]
     check_feed if @config["require_feed"]
 
-    @config["md_paths"].each { |path| check_md_mirror(path) }
-    @config["section_indexes"].each { |pair| check_section_index(pair) }
+    section_html_paths.each { |path| check_section_index(path) }
 
-    @config["html_paths"].each { |path| check_html_page(path) }
+    @config["html_paths"].each do |path|
+      check_md_mirror(html_path_to_md(path))
+      check_html_page(path)
+    end
 
     print_report
     @results.any? { |r| r.status == :fail } ? 1 : 0
@@ -102,7 +104,7 @@ class VerifySeo
     raw = JSON.parse(File.read(resolved))
     config = CONFIG_DEFAULTS.merge(raw)
 
-    %w[html_paths md_paths section_indexes].each do |key|
+    %w[html_paths section_indexes].each do |key|
       abort "#{CONFIG_FILENAME}: missing required key \"#{key}\"" unless config.key?(key)
     end
 
@@ -260,9 +262,14 @@ class VerifySeo
     fail("MD mirror #{path}", e.message)
   end
 
-  def check_section_index(pair)
-    html_path = pair["html"]
-    md_path = pair["md"]
+  def section_html_paths
+    @config["section_indexes"].map do |entry|
+      entry.is_a?(Hash) ? entry["html"] : entry
+    end
+  end
+
+  def check_section_index(html_path)
+    md_path = html_path_to_md(html_path)
     check_md_mirror(md_path)
     check_html_page(html_path, expected_md: md_path)
   end

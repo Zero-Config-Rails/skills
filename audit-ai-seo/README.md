@@ -30,7 +30,7 @@ Complete all steps below **before** invoking the skill. The workflow always ends
 ```
 1. Install the skill        →  .cursor/skills/ or .claude/skills/
 2. Add site-pages.json      →  project root or script/ (copy template, edit URLs)
-3. Invoke the skill         →  /audit-ai-seo with your production URL
+3. Invoke the skill         →  `/audit-ai-seo` in Agent chat (+ your production URL)
 4. Verify (agent or you)    →  ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb URL
 ```
 
@@ -121,14 +121,15 @@ Edit `script/site-pages.json` with **your** live URLs. The bundled file ships wi
 
 ```
 https://example.com/
-├── /                          ← html_paths + /index.md in md_paths
-├── /guide/                    ← section_indexes (section landing)
-│   ├── guide.md               ← section_indexes md pair
-│   └── /guide/introduction/   ← html_paths (deep content page)
-│       └── introduction.md    ← md_paths
-└── /blog/                     ← section_indexes
-    └── blog.md
+├── /                          ← html_paths
+│   └── index.md               ← derived automatically
+├── /guide/                    ← section_indexes
+│   └── guide.md               ← derived automatically
+└── /guide/introduction/       ← html_paths
+    └── introduction.md        ← derived automatically
 ```
+
+You only list HTML paths. The verifier and skill derive `.md` mirrors using the mapping below. If a `.md` file does not exist yet, the skill must **create it** during implementation.
 
 #### `html_paths` (required)
 
@@ -150,61 +151,45 @@ https://example.com/
 
 Use trailing slashes if that is how your site serves URLs (`/guide/introduction/` not `/guide/introduction`).
 
----
-
-#### `md_paths` (required)
-
-**What:** The **`.md` mirror URLs** for the same kinds of pages — direct fetches, not derived from HTML paths.
-
-**Why:** Confirms agents get clean Markdown (not HTML), and that the `.md` response includes a `Link` header pointing back to HTML.
-
-**Rule of thumb:** For every path in `html_paths`, add the matching `.md` URL:
+**`.md` mirrors (automatic)** — derived from each `html_paths` and `section_indexes` entry:
 
 | HTML | `.md` mirror |
 |------|----------------|
 | `/` | `/index.md` |
+| `/guide/` | `/guide.md` |
 | `/guide/introduction/` | `/guide/introduction.md` |
 | `/about/` | `/about.md` |
 
-```json
-"md_paths": ["/index.md", "/guide/introduction.md", "/blog/2024/launch-post.md"]
-```
+Rule: strip trailing slash; `/` → `/index.md`; otherwise append `.md`. Do not add a separate `md_paths` key — the skill creates any missing mirrors during implementation.
 
 ---
 
 #### `section_indexes` (required)
 
-**What:** **Section landing pages** — the index/listing page for each major area of the site (guide overview, blog index, docs hub). Each entry is an `html` + `md` pair.
+**What:** **Section landing pages** — the index/listing page for each major area (`/guide/`, `/blog/`, docs hub). List HTML paths only; `.md` mirrors are derived the same way as `html_paths`.
 
-**Why:** Section indexes often use a different template than inner pages. They need their own `.md` mirror (e.g. `/guide.md` for `/guide/`) and are easy to forget. The verifier runs the full HTML + MD checks on both URLs in each pair.
+**Why:** Section indexes use a different template than inner pages (`/guide.md` for `/guide/`, not `/guide/.md`). Easy to forget — list them here so they get checked and implemented.
 
 **Not** the same as `html_paths`:
-- `section_indexes` → “table of contents” pages (`/guide/`, `/blog/`)
-- `html_paths` → actual articles/chapters (`/guide/introduction/`)
+- `section_indexes` → table-of-contents pages (`/guide/`, `/blog/`)
+- `html_paths` → articles/chapters (`/guide/introduction/`)
 
 **Examples:**
 
-Docs site with guide and blog:
-
 ```json
-"section_indexes": [
-  { "html": "/guide/", "md": "/guide.md" },
-  { "html": "/blog/", "md": "/blog.md" }
-]
+"section_indexes": ["/guide/", "/blog/"]
 ```
 
-Single-page marketing site with no sections:
+Single-page marketing site:
 
 ```json
 "section_indexes": []
 ```
 
-Only a blog (no separate guide):
+Blog only:
 
 ```json
-"section_indexes": [
-  { "html": "/blog/", "md": "/blog.md" }
-]
+"section_indexes": ["/blog/"]
 ```
 
 ---
@@ -279,11 +264,7 @@ Full implementation checklist: [references/accept-markdown-negotiation.md](refer
 ```json
 {
   "html_paths": ["/", "/guide/introduction/"],
-  "md_paths": ["/index.md", "/guide/introduction.md"],
-  "section_indexes": [
-    { "html": "/guide/", "md": "/guide.md" },
-    { "html": "/blog/", "md": "/blog.md" }
-  ],
+  "section_indexes": ["/guide/", "/blog/"],
   "check_llms_full_txt": true,
   "require_feed": true,
   "require_json_ld": true,
@@ -296,10 +277,7 @@ Full implementation checklist: [references/accept-markdown-negotiation.md](refer
 ```json
 {
   "html_paths": ["/", "/blog/hello-world/"],
-  "md_paths": ["/index.md", "/blog/hello-world.md"],
-  "section_indexes": [
-    { "html": "/blog/", "md": "/blog.md" }
-  ],
+  "section_indexes": ["/blog/"],
   "check_llms_full_txt": false,
   "require_feed": true,
   "require_json_ld": true,
@@ -312,7 +290,6 @@ Full implementation checklist: [references/accept-markdown-negotiation.md](refer
 ```json
 {
   "html_paths": ["/"],
-  "md_paths": ["/index.md"],
   "section_indexes": [],
   "check_llms_full_txt": false,
   "require_feed": false,
@@ -325,40 +302,35 @@ Full implementation checklist: [references/accept-markdown-negotiation.md](refer
 
 With the skill installed and `site-pages.json` in your project, open the **project root** in your agent.
 
-**Cursor** — type `/audit-ai-seo` in **Agent** chat, or use natural language:
-
-```
-Audit AI SEO for https://myapp.com — Layer 0 and Layer 1, then verify production.
-```
-
-```
-Implement llms.txt, .md mirrors, and Accept negotiation. Run verify from .cursor/skills/audit-ai-seo/scripts/ when done.
-```
-
-```
-We're not showing up in AI answers. Run audit-ai-seo and fix gaps.
-```
-
-To confirm the skill is loaded: **Cursor Settings → Rules** — `audit-ai-seo` should appear under skills.
-
-**Claude Code** — from the project directory:
+**Cursor** — in **Agent** chat, type:
 
 ```
 /audit-ai-seo
 ```
 
+That is the fastest way to load the skill. Add your site in the same message:
+
 ```
-Follow audit-ai-seo. Audit https://myapp.com — site-pages.json is in the project root.
+/audit-ai-seo https://myapp.com
 ```
 
-**Include in your first prompt:**
+Or follow up immediately with context:
 
 | Include | Example |
 |---------|---------|
 | Production URL | `https://myapp.com` |
 | Stack | Bridgetown, Rails, Next.js, static on Netlify, … |
 | Scope | audit only, implement fixes, or verify after deploy |
-| Config location | `./site-pages.json` or `./script/site-pages.json` |
+
+Natural-language prompts also work, but `/audit-ai-seo` is quicker and loads the right workflow every time.
+
+To confirm the skill is installed: **Cursor Settings → Rules** — `audit-ai-seo` should appear under skills.
+
+**Claude Code** — from the project directory:
+
+```
+/audit-ai-seo https://myapp.com
+```
 
 ## Agent workflow
 

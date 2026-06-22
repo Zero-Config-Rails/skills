@@ -1,10 +1,6 @@
 {
   "html_paths": ["/", "/guide/introduction/"],
-  "md_paths": ["/index.md", "/guide/introduction.md"],
-  "section_indexes": [
-    { "html": "/guide/", "md": "/guide.md" },
-    { "html": "/blog/", "md": "/blog.md" }
-  ],
+  "section_indexes": ["/guide/", "/blog/"],
   "check_llms_full_txt": true,
   "require_feed": false,
   "require_json_ld": true,

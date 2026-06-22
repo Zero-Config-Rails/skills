@@ -123,6 +123,17 @@ Curated Markdown at site root ([llmstxt.org](https://llmstxt.org/) format). READ
 
 For `/path/` serve `/path.md` (root → `/index.md`). **Single source of truth** (generate from same content as HTML). No YAML front matter in the served body.
 
+When auditing or implementing: for every URL in `site-pages.json` `html_paths` and `section_indexes`, derive the `.md` path and **ship it** if missing:
+
+| HTML | `.md` mirror |
+|------|----------------|
+| `/` | `/index.md` |
+| `/guide/` | `/guide.md` |
+| `/guide/introduction/` | `/guide/introduction.md` |
+| `/about/` | `/about.md` |
+
+Rule: strip trailing slash, `/` → `/index.md`, else append `.md`.
+
 ### 3. Advertise Markdown (both HTML tag and HTTP header)
 
 ```html
@@ -201,22 +212,20 @@ Other stacks: same outputs, different build hooks (Jekyll plugin, Next.js route,
 After every audit or implementation pass:
 
 1. Ensure project has `site-pages.json` (copy [site-pages.json](site-pages.json) template from skill to project root or `script/`, then edit)
-2. Edit `site-pages.json` — **required**. Lists which HTML pages, `.md` mirrors, and section indexes to probe:
+2. Edit `site-pages.json` — **required**. Lists `html_paths` and `section_indexes` (`.md` mirrors are derived and created by the skill if missing):
 
 ```json
 {
   "html_paths": ["/", "/guide/introduction/"],
-  "md_paths": ["/index.md", "/guide/introduction.md"],
-  "section_indexes": [
-    { "html": "/guide/", "md": "/guide.md" },
-    { "html": "/blog/", "md": "/blog.md" }
-  ],
+  "section_indexes": ["/guide/", "/blog/"],
   "check_llms_full_txt": true,
   "require_feed": false,
   "require_json_ld": true,
   "require_markdown_negotiation": true
 }
 ```
+
+`.md` mirror paths are **derived automatically** from each HTML path (see mapping below) — do not list them in config. When implementing, the agent must **create** each derived `.md` file/route if missing.
 
 3. Run against **production** from project root (script stays in skill folder):
 
