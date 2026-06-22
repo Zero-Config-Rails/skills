@@ -35,7 +35,11 @@ Add the skill to the repo you're auditing so the whole team shares the same work
 
 ```bash
 mkdir -p /tmp .cursor/skills
-git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+if [ -d /tmp/zcr-skills/.git ]; then
+  git -C /tmp/zcr-skills pull --ff-only
+else
+  git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+fi
 cp -r /tmp/zcr-skills/audit-ai-seo .cursor/skills/
 ```
 
@@ -43,7 +47,11 @@ cp -r /tmp/zcr-skills/audit-ai-seo .cursor/skills/
 
 ```bash
 mkdir -p /tmp .claude/skills
-git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+if [ -d /tmp/zcr-skills/.git ]; then
+  git -C /tmp/zcr-skills pull --ff-only
+else
+  git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+fi
 cp -r /tmp/zcr-skills/audit-ai-seo .claude/skills/
 ```
 
@@ -68,7 +76,11 @@ Use on any project without installing the skill in each repo.
 
 ```bash
 mkdir -p /tmp ~/.cursor/skills   # or ~/.claude/skills
-git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+if [ -d /tmp/zcr-skills/.git ]; then
+  git -C /tmp/zcr-skills pull --ff-only
+else
+  git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+fi
 cp -r /tmp/zcr-skills/audit-ai-seo ~/.cursor/skills/audit-ai-seo   # or ~/.claude/skills/
 ```
 

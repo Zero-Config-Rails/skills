@@ -20,7 +20,11 @@ From your project root:
 
 ```bash
 mkdir -p /tmp .cursor/skills
-git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+if [ -d /tmp/zcr-skills/.git ]; then
+  git -C /tmp/zcr-skills pull --ff-only
+else
+  git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+fi
 cp -r /tmp/zcr-skills/audit-ai-seo .cursor/skills/
 ```
 
@@ -28,17 +32,12 @@ cp -r /tmp/zcr-skills/audit-ai-seo .cursor/skills/
 
 ```bash
 mkdir -p /tmp .claude/skills
-git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+if [ -d /tmp/zcr-skills/.git ]; then
+  git -C /tmp/zcr-skills pull --ff-only
+else
+  git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+fi
 cp -r /tmp/zcr-skills/audit-ai-seo .claude/skills/
-```
-
-Or add as a git submodule:
-
-```bash
-mkdir -p .cursor/skills
-git submodule add git@github.com:Zero-Config-Rails/skills.git .cursor/skills/zcr-skills
-# then symlink or copy the skill you need, e.g.:
-ln -s zcr-skills/audit-ai-seo .cursor/skills/audit-ai-seo
 ```
 
 **Other agents** (Codex, Copilot, Gemini CLI, OpenCode, etc.)
@@ -53,7 +52,11 @@ Install once on your machine if you want the skill in every project without addi
 
 ```bash
 mkdir -p /tmp ~/.cursor/skills
-git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+if [ -d /tmp/zcr-skills/.git ]; then
+  git -C /tmp/zcr-skills pull --ff-only
+else
+  git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+fi
 cp -r /tmp/zcr-skills/audit-ai-seo ~/.cursor/skills/audit-ai-seo
 # or symlink while developing:
 ln -s "$(pwd)/audit-ai-seo" ~/.cursor/skills/audit-ai-seo
@@ -63,7 +66,11 @@ ln -s "$(pwd)/audit-ai-seo" ~/.cursor/skills/audit-ai-seo
 
 ```bash
 mkdir -p /tmp ~/.claude/skills
-git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+if [ -d /tmp/zcr-skills/.git ]; then
+  git -C /tmp/zcr-skills pull --ff-only
+else
+  git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+fi
 cp -r /tmp/zcr-skills/audit-ai-seo ~/.claude/skills/audit-ai-seo
 ```
 
