@@ -342,27 +342,89 @@ class VerifySeo
     fail("HTML #{path}", e.message)
   end
 
-  def check_markdown_negotiation(html_path, md_path)
+  def check_markdown_negotiation(html_path, _md_path)
+    check_negotiation_returns_markdown(html_path)
+    check_negotiation_rejects_unsupported_accept(html_path)
+    check_negotiation_honors_q_values(html_path)
+    check_negotiation_wildcard_returns_html(html_path)
+  end
+
+  def check_negotiation_returns_markdown(html_path)
     res = fetch(absolute(html_path), headers: { "Accept" => "text/markdown, text/html;q=0.5" })
     body = res[:body].to_s.strip
     vary = res[:headers]["vary"].to_s.downcase
 
     if res[:code] == 200 && !body.start_with?("<!") && !body.start_with?("<html")
       if vary.include?("accept")
-        pass("Negotiation #{html_path}", "Markdown body + Vary: Accept")
+        pass("Negotiation #{html_path} markdown", "Markdown body + Vary: Accept")
       else
-        warn("Negotiation #{html_path}", "Markdown body but missing Vary: Accept")
+        warn("Negotiation #{html_path} markdown", "Markdown body but missing Vary: Accept")
       end
     elsif res[:code] == 406
-      warn("Negotiation #{html_path}", "406 (check Accept rules)")
+      fail("Negotiation #{html_path} markdown", "HTTP 406 but Accept allows text/html fallback")
     else
-      warn(
-        "Negotiation #{html_path}",
-        "still HTML or HTTP #{res[:code]} (edge function / server may be missing; direct #{md_path} still works)"
+      fail(
+        "Negotiation #{html_path} markdown",
+        "expected Markdown body, got HTTP #{res[:code]} (edge function / server may be missing)"
       )
     end
   rescue StandardError => e
-    warn("Negotiation #{html_path}", e.message)
+    fail("Negotiation #{html_path} markdown", e.message)
+  end
+
+  def check_negotiation_honors_q_values(html_path)
+    res = fetch(absolute(html_path), headers: { "Accept" => "text/html, text/markdown;q=0.5" })
+    body = res[:body].to_s.strip
+
+    if res[:code] == 200 && (body.start_with?("<!") || body.start_with?("<html"))
+      pass("Negotiation #{html_path} q-values", "HTML wins when text/html;q implicit > markdown;q=0.5")
+    else
+      fail(
+        "Negotiation #{html_path} q-values",
+        "expected HTML when Accept: text/html, text/markdown;q=0.5, got HTTP #{res[:code]}"
+      )
+    end
+  rescue StandardError => e
+    fail("Negotiation #{html_path} q-values", e.message)
+  end
+
+  def check_negotiation_wildcard_returns_html(html_path)
+    res = fetch(absolute(html_path), headers: { "Accept" => "*/*" })
+    body = res[:body].to_s.strip
+
+    if res[:code] == 200 && (body.start_with?("<!") || body.start_with?("<html"))
+      pass("Negotiation #{html_path} wildcard", "*/* returns HTML (text/markdown not named)")
+    elsif res[:code] == 200 && !body.start_with?("<!")
+      fail(
+        "Negotiation #{html_path} wildcard",
+        "Accept: */* must not return Markdown unless text/markdown is explicit"
+      )
+    else
+      fail("Negotiation #{html_path} wildcard", "expected HTML for Accept: */*, got HTTP #{res[:code]}")
+    end
+  rescue StandardError => e
+    fail("Negotiation #{html_path} wildcard", e.message)
+  end
+
+  def check_negotiation_rejects_unsupported_accept(html_path)
+    res = fetch(absolute(html_path), headers: { "Accept" => "application/json" })
+    body = res[:body].to_s.strip
+
+    if res[:code] == 406
+      pass("Negotiation #{html_path} unsupported Accept", "HTTP 406 Not Acceptable")
+    elsif res[:code] == 200 && (body.start_with?("<!") || body.start_with?("<html"))
+      fail(
+        "Negotiation #{html_path} unsupported Accept",
+        "HTTP 200 HTML — must return 406 when Accept is only application/json (RFC 9110)"
+      )
+    else
+      fail(
+        "Negotiation #{html_path} unsupported Accept",
+        "HTTP #{res[:code]} — expected 406 for Accept: application/json"
+      )
+    end
+  rescue StandardError => e
+    fail("Negotiation #{html_path} unsupported Accept", e.message)
   end
 
   def html_path_to_md(path)

@@ -235,9 +235,16 @@ Only a blog (no separate guide):
 
 #### `require_markdown_negotiation` (optional, default `true`)
 
-**What:** Whether to request each `html_paths` URL with `Accept: text/markdown` and expect Markdown back (plus `Vary: Accept`).
+**What:** Whether to test `Accept: text/markdown` content negotiation on each `html_paths` URL.
 
-**When `true`:** You have edge/server negotiation wired up (Netlify edge function, etc.).
+**Checks when `true`** (matches [acceptmarkdown.com readiness](https://acceptmarkdown.com/#readiness)):
+
+1. `Accept: text/markdown, text/html;q=0.5` → **200** Markdown + `Vary: Accept`
+2. `Accept: application/json` only → **406 Not Acceptable**
+3. `Accept: text/html, text/markdown;q=0.5` → **200** HTML (q-values honored)
+4. `Accept: */*` → **200** HTML (wildcard must not return Markdown)
+
+Full implementation checklist: [references/accept-markdown-negotiation.md](references/accept-markdown-negotiation.md)
 
 **When `false`:** You only serve `.md` at explicit `.md` URLs and have not shipped negotiation yet.
 
@@ -367,7 +374,7 @@ Exit code `1` if any check **FAIL**s; **WARN** lines are backlog unless you want
 
 **Layer 0:** robots.txt, sitemap, Sitemap directive, AI bots not blocked, Content-Signal, single title/description, canonical, Open Graph, JSON-LD, optional feed
 
-**Layer 1:** `llms.txt`, `llms-full.txt`, `.md` mirrors, HTML `link alternate`, HTTP `Link` headers, hidden LLM pointer, `Accept: text/markdown` + `Vary: Accept`
+**Layer 1:** `llms.txt`, `llms-full.txt`, `.md` mirrors, HTML `link alternate`, HTTP `Link` headers, hidden LLM pointer, `Accept: text/markdown` negotiation (including **406** for unsupported `Accept` types) + `Vary: Accept`
 
 Optional external scanners after a green run:
 

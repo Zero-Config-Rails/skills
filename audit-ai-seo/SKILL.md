@@ -19,7 +19,7 @@ Two layers, one workflow, **equal priority**: Google search and LLM agents both 
 
 1. **Audit** live site (or local build output if not deployed)
 2. **Report** gaps as Layer 0 (Google/crawl) vs Layer 1 (LLM retrieval) vs content (comparisons, thin pages)
-3. **Implement** fixes (each step is independently shippable)
+3. **Implement** fixes (each step is independently shippable). For Accept negotiation, follow [references/accept-markdown-negotiation.md](references/accept-markdown-negotiation.md) — language-agnostic algorithm, test matrix, Rack/edge hooks.
 4. **Verify** with `scripts/verify_seo.rb` against production URL
 5. **Hand off** a project-local copy of the verifier **and** `site-pages.json` (customized paths) so the user can re-run anytime
 
@@ -149,16 +149,18 @@ Full corpus in one file. High value for docs/APIs; for blogs, concatenating post
 
 ### 6. `Accept: text/markdown` content negotiation
 
-Same URL, representation chosen by `Accept`. Required behavior:
+Same URL, representation chosen by `Accept`. Full language-agnostic checklist (algorithm, test matrix, Rack/edge hooks): **[references/accept-markdown-negotiation.md](references/accept-markdown-negotiation.md)**.
 
-- Compare **q-values**, not substring match
-- Tie-break to Markdown only when client **explicitly** named `text/markdown` (not `*/*`)
-- Return **406** when neither HTML nor Markdown is acceptable (skip for explicit `.md` URLs)
-- `Vary: Accept` + `Link` on both representations
+Must pass [acceptmarkdown.com readiness](https://acceptmarkdown.com/#readiness):
+
+1. Serves Markdown for `Accept: text/markdown`
+2. Sets `Vary: Accept` on HTML and Markdown responses
+3. Returns **406** when neither `text/html` nor `text/markdown` is acceptable
+4. Honors **`q`-values** — `*/*` alone must not return Markdown; higher `q` on `text/html` wins over lower `text/markdown`
 
 **Not cloaking.** User-Agent sniffing for bots is forbidden; use `Accept` only.
 
-Static hosts (Netlify, Cloudflare): edge function or `_headers` for `Link`/`Vary`; negotiation at edge if platform supports it.
+Static hosts (Netlify, Cloudflare): edge function or middleware; `_headers` for `Link`/`Vary` on static fallbacks. Stack recipes: [acceptmarkdown.com](https://acceptmarkdown.com).
 
 ### 7. Optional analytics
 
@@ -187,7 +189,7 @@ This repo pattern (adapt for other stacks):
 - `plugins/builders/seo_discoverability.rb` → `sitemap.xml`, `feed.xml`
 - `plugins/seo_discoverability.rb` → `llms.txt`, `llms-full.txt`, `.md` mirrors, `output/_headers`
 - `src/_partials/_head.erb` → single `seo` tag, `link alternate`, feed link
-- `netlify/edge-functions/markdown-negotiate.ts` → Accept negotiation in production
+- `netlify/edge-functions/` → Accept negotiation middleware (see [references/accept-markdown-negotiation.md](references/accept-markdown-negotiation.md))
 - `Shared::MarkdownAlternatePointer` → hidden LLM hint
 
 Other stacks: same outputs, different build hooks (Jekyll plugin, Next.js route, Rails `Mime::Type.register`, Nginx/Caddy recipes at [acceptmarkdown.com](https://acceptmarkdown.com)).
@@ -239,7 +241,7 @@ The script uses stdlib only (no gems). Exit code 1 if any check failed.
 
 **Layer 0:** robots.txt, sitemap, Sitemap directive, AI bots not blocked, Content-Signal, single title/description, canonical, Open Graph, JSON-LD, optional feed
 
-**Layer 1:** llms.txt, llms-full.txt, `.md` mirrors, HTML `link alternate`, HTTP `Link` headers, hidden LLM pointer, `Accept: text/markdown` + `Vary: Accept`
+**Layer 1:** llms.txt, llms-full.txt, `.md` mirrors, HTML `link alternate`, HTTP `Link` headers, hidden LLM pointer, `Accept: text/markdown` negotiation (Markdown served, 406 unsupported, q-values, `*/*` → HTML, `Vary: Accept`) — see [references/accept-markdown-negotiation.md](references/accept-markdown-negotiation.md)
 
 ---
 
