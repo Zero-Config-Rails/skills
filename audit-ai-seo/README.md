@@ -27,12 +27,49 @@ Ask your agent (Cursor, Claude Code, etc.) to audit SEO, implement LLM visibilit
 
 ## Install
 
-Copy or symlink this directory into your agent's skills folder:
+### Project install (recommended)
 
-| Agent | Personal | Project |
-|-------|----------|---------|
-| Cursor | `~/.cursor/skills/audit-ai-seo` | `.cursor/skills/audit-ai-seo` |
-| Claude Code | `~/.claude/skills/audit-ai-seo` | `.claude/skills/audit-ai-seo` |
+Add the skill to the repo you're auditing so the whole team shares the same workflow. Commit `.cursor/skills/` or `.claude/skills/` with your project.
+
+**Cursor** — from your project root:
+
+```bash
+git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+cp -r /tmp/zcr-skills/audit-ai-seo .cursor/skills/
+git add .cursor/skills/audit-ai-seo
+```
+
+**Claude Code** — from your project root:
+
+```bash
+git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+cp -r /tmp/zcr-skills/audit-ai-seo .claude/skills/
+git add .claude/skills/audit-ai-seo
+```
+
+After the agent runs an audit, copy the verifier into the same project (not the skills folder):
+
+```bash
+mkdir -p script
+cp .cursor/skills/audit-ai-seo/scripts/verify_seo.rb script/
+cp .cursor/skills/audit-ai-seo/site-pages.json script/
+# edit script/site-pages.json for your URLs, then:
+ruby script/verify_seo.rb https://example.com
+```
+
+### Global install (optional)
+
+Use on any project without committing the skill to each repo.
+
+| Agent | Path |
+|-------|------|
+| Cursor | `~/.cursor/skills/audit-ai-seo` |
+| Claude Code | `~/.claude/skills/audit-ai-seo` |
+
+```bash
+git clone git@github.com:Zero-Config-Rails/skills.git
+cp -r skills/audit-ai-seo ~/.cursor/skills/audit-ai-seo   # or ~/.claude/skills/
+```
 
 Other clients: same folder layout; see [agentskills.io](https://agentskills.io/home) for paths.
 

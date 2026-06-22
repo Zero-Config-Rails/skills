@@ -12,7 +12,41 @@ That gives agents domain-specific checklists, conventions, and tooling so audits
 
 ## Installation
 
-Clone this repo, then copy or symlink a skill into your agent's skills directory. Paths differ by product; see each client's docs linked from [agentskills.io](https://agentskills.io/home).
+**Project install (recommended)** — commit the skill with your repo so everyone on the team gets the same workflow.
+
+From your project root:
+
+**Cursor**
+
+```bash
+git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+cp -r /tmp/zcr-skills/audit-ai-seo .cursor/skills/
+git add .cursor/skills/audit-ai-seo
+```
+
+**Claude Code**
+
+```bash
+git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+cp -r /tmp/zcr-skills/audit-ai-seo .claude/skills/
+git add .claude/skills/audit-ai-seo
+```
+
+Or add as a git submodule:
+
+```bash
+git submodule add git@github.com:Zero-Config-Rails/skills.git .cursor/skills/zcr-skills
+# then symlink or copy the skill you need, e.g.:
+ln -s zcr-skills/audit-ai-seo .cursor/skills/audit-ai-seo
+```
+
+**Other agents** (Codex, Copilot, Gemini CLI, OpenCode, etc.)
+
+Use the same skill folder under your client's project skills path; see [agentskills.io](https://agentskills.io/home).
+
+### Global install (optional)
+
+Install once on your machine if you want the skill in every project without adding it to each repo.
 
 **Cursor**
 
@@ -23,8 +57,6 @@ cp -r skills/audit-ai-seo ~/.cursor/skills/audit-ai-seo
 ln -s "$(pwd)/audit-ai-seo" ~/.cursor/skills/audit-ai-seo
 ```
 
-Project-scoped: `.cursor/skills/audit-ai-seo/`
-
 **Claude Code**
 
 ```bash
@@ -32,11 +64,7 @@ git clone git@github.com:Zero-Config-Rails/skills.git
 cp -r skills/audit-ai-seo ~/.claude/skills/audit-ai-seo
 ```
 
-Project-scoped: `.claude/skills/audit-ai-seo/`
-
-**Other agents** (Codex, Copilot, Gemini CLI, OpenCode, etc.)
-
-Use the same skill folder; install location follows your client's Agent Skills docs on [agentskills.io](https://agentskills.io/home).
+Global paths: `~/.cursor/skills/audit-ai-seo` (Cursor), `~/.claude/skills/audit-ai-seo` (Claude Code).
 
 ## Available skills
 
