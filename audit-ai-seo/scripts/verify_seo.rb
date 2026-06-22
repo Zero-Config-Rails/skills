@@ -3,12 +3,15 @@
 
 # Live SEO + LLM discoverability verifier (stdlib only).
 #
+# Requires site-pages.json — lists which pages on your site to check.
+# Copy site-pages.json from the audit-ai-seo skill and edit paths for your site.
+#
 # Usage:
 #   ruby verify_seo.rb https://example.com
+#   ruby verify_seo.rb https://example.com ./site-pages.json
 #   SITE=https://example.com ruby verify_seo.rb
 #
-# Customize PROBES below for your site, or pass a JSON config path:
-#   ruby verify_seo.rb https://example.com ./seo-probes.json
+# Looks for site-pages.json next to this script, then ./site-pages.json in cwd.
 #
 # References:
 #   https://evilmartians.com/chronicles/how-to-make-your-website-visible-to-llms
@@ -24,15 +27,10 @@ class VerifySeo
   Result = Data.define(:name, :status, :detail) # :pass, :warn, :fail
 
   AI_BOTS = %w[GPTBot ClaudeBot PerplexityBot CCBot Google-Extended].freeze
+  CONFIG_FILENAME = "site-pages.json"
 
-  DEFAULT_PROBES = {
-    "sample_html_paths" => ["/", "/guide/introduction/"],
-    "sample_md_paths" => ["/index.md", "/guide/introduction.md"],
-    "section_indexes" => [
-      { "html" => "/guide/", "md" => "/guide.md" },
-      { "html" => "/blog/", "md" => "/blog.md" }
-    ],
-    "require_llms_full" => true,
+  CONFIG_DEFAULTS = {
+    "check_llms_full_txt" => true,
     "require_feed" => false,
     "require_json_ld" => true,
     "require_markdown_negotiation" => true
@@ -40,7 +38,7 @@ class VerifySeo
 
   def initialize(base_url, config_path: nil)
     @base = normalize_base(base_url)
-    @config = DEFAULT_PROBES.merge(load_config(config_path))
+    @config = load_config!(config_path)
     @results = []
   end
 
@@ -48,7 +46,7 @@ class VerifySeo
     check_robots
     check_sitemap
     check_llms_txt
-    check_llms_full if @config["require_llms_full"]
+    check_llms_full_txt if @config["check_llms_full_txt"]
     check_feed if @config["require_feed"]
 
     @config["sample_md_paths"].each { |path| check_md_mirror(path) }
@@ -72,13 +70,46 @@ class VerifySeo
     URI("#{uri.scheme}://#{uri.host}#{uri.port && uri.port != uri.default_port ? ":#{uri.port}" : ""}#{path == "" ? "" : path}")
   end
 
-  def load_config(path)
-    return {} unless path && File.file?(path)
+  def self.resolve_config_path(explicit_path)
+    if explicit_path
+      return explicit_path if File.file?(explicit_path)
 
-    JSON.parse(File.read(path))
+      abort "Config not found: #{explicit_path}"
+    end
+
+    script_dir = File.dirname(File.expand_path($PROGRAM_NAME))
+    candidates = [
+      File.join(script_dir, CONFIG_FILENAME),
+      File.join(script_dir, "..", CONFIG_FILENAME),
+      File.join(Dir.pwd, CONFIG_FILENAME),
+      File.join(Dir.pwd, "script", CONFIG_FILENAME)
+    ]
+
+    found = candidates.find { |p| File.file?(p) }
+    return found if found
+
+    abort <<~MSG
+      Missing #{CONFIG_FILENAME} — copy it from the audit-ai-seo skill and list your site's pages to check.
+
+      Expected one of:
+        #{candidates.join("\n        ")}
+
+      Usage: ruby verify_seo.rb https://example.com [path/to/site-pages.json]
+    MSG
+  end
+
+  def load_config!(path)
+    resolved = self.class.resolve_config_path(path)
+    raw = JSON.parse(File.read(resolved))
+    config = CONFIG_DEFAULTS.merge(raw)
+
+    %w[sample_html_paths sample_md_paths section_indexes].each do |key|
+      abort "#{CONFIG_FILENAME}: missing required key \"#{key}\"" unless config.key?(key)
+    end
+
+    config
   rescue JSON::ParserError => e
-    warn "Config parse error: #{e.message}"
-    {}
+    abort "#{CONFIG_FILENAME} parse error: #{e.message}"
   end
 
   def absolute(path)
@@ -187,7 +218,7 @@ class VerifySeo
     fail("llms.txt", e.message)
   end
 
-  def check_llms_full
+  def check_llms_full_txt
     res = fetch(absolute("/llms-full.txt"))
     if res[:code] == 200 && res[:body].to_s.length > 500
       pass("llms-full.txt", "HTTP 200, #{res[:body].length} bytes")
@@ -369,7 +400,7 @@ end
 
 if __FILE__ == $PROGRAM_NAME
   base = ARGV.find { |a| a.match?(%r{\Ahttps?://}) } || ENV["SITE"]
-  abort "Usage: ruby verify_seo.rb https://example.com [config.json]" unless base
+  abort "Usage: ruby verify_seo.rb https://example.com [site-pages.json]" unless base
 
   config_path = ARGV.find { |a| a.end_with?(".json") }
   exit VerifySeo.new(base, config_path: config_path).run
