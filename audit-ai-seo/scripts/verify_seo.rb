@@ -49,10 +49,10 @@ class VerifySeo
     check_llms_full_txt if @config["check_llms_full_txt"]
     check_feed if @config["require_feed"]
 
-    @config["sample_md_paths"].each { |path| check_md_mirror(path) }
+    @config["md_paths"].each { |path| check_md_mirror(path) }
     @config["section_indexes"].each { |pair| check_section_index(pair) }
 
-    @config["sample_html_paths"].each { |path| check_html_page(path) }
+    @config["html_paths"].each { |path| check_html_page(path) }
 
     print_report
     @results.any? { |r| r.status == :fail } ? 1 : 0
@@ -103,7 +103,7 @@ class VerifySeo
     raw = JSON.parse(File.read(resolved))
     config = CONFIG_DEFAULTS.merge(raw)
 
-    %w[sample_html_paths sample_md_paths section_indexes].each do |key|
+    %w[html_paths md_paths section_indexes].each do |key|
       abort "#{CONFIG_FILENAME}: missing required key \"#{key}\"" unless config.key?(key)
     end
 

@@ -25,7 +25,7 @@ if [ -d /tmp/zcr-skills/.git ]; then
 else
   git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
 fi
-cp -r /tmp/zcr-skills/audit-ai-seo .cursor/skills/
+rsync -a --delete --exclude='.git' /tmp/zcr-skills/audit-ai-seo/ .cursor/skills/audit-ai-seo/
 ```
 
 **Claude Code**
@@ -37,7 +37,7 @@ if [ -d /tmp/zcr-skills/.git ]; then
 else
   git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
 fi
-cp -r /tmp/zcr-skills/audit-ai-seo .claude/skills/
+rsync -a --delete --exclude='.git' /tmp/zcr-skills/audit-ai-seo/ .claude/skills/audit-ai-seo/
 ```
 
 **Other agents** (Codex, Copilot, Gemini CLI, OpenCode, etc.)
@@ -46,7 +46,7 @@ Use the same skill folder under your client's project skills path; see [agentski
 
 ### Global install (optional)
 
-Install once on your machine if you want the skill in every project without adding it to each repo.
+Install once on your machine if you want the skill in every project without adding it to each repo. Same pattern: clone to `/tmp` only, copy files without `.git`.
 
 **Cursor**
 
@@ -57,9 +57,7 @@ if [ -d /tmp/zcr-skills/.git ]; then
 else
   git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
 fi
-cp -r /tmp/zcr-skills/audit-ai-seo ~/.cursor/skills/audit-ai-seo
-# or symlink while developing:
-ln -s "$(pwd)/audit-ai-seo" ~/.cursor/skills/audit-ai-seo
+rsync -a --delete --exclude='.git' /tmp/zcr-skills/audit-ai-seo/ ~/.cursor/skills/audit-ai-seo/
 ```
 
 **Claude Code**
@@ -71,7 +69,7 @@ if [ -d /tmp/zcr-skills/.git ]; then
 else
   git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
 fi
-cp -r /tmp/zcr-skills/audit-ai-seo ~/.claude/skills/audit-ai-seo
+rsync -a --delete --exclude='.git' /tmp/zcr-skills/audit-ai-seo/ ~/.claude/skills/audit-ai-seo/
 ```
 
 Global paths: `~/.cursor/skills/audit-ai-seo` (Cursor), `~/.claude/skills/audit-ai-seo` (Claude Code).

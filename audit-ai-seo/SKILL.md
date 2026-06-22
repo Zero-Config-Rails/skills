@@ -203,8 +203,8 @@ After every audit or implementation pass:
 
 ```json
 {
-  "sample_html_paths": ["/", "/guide/introduction/"],
-  "sample_md_paths": ["/index.md", "/guide/introduction.md"],
+  "html_paths": ["/", "/guide/introduction/"],
+  "md_paths": ["/index.md", "/guide/introduction.md"],
   "section_indexes": [
     { "html": "/guide/", "md": "/guide.md" },
     { "html": "/blog/", "md": "/blog.md" }

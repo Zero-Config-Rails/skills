@@ -23,13 +23,20 @@ The skill **refuses debunked patterns** (`ai.txt`, AI-specific meta tags, User-A
 - Existing site: "why aren't we in AI answers / Google?"
 - After shipping discoverability changes: confirm production with the verifier
 
-See [How to invoke](#how-to-invoke) below for Cursor `/audit-ai-seo` and example prompts.
+## Setup
 
-## Install
+Complete all steps below **before** invoking the skill. The workflow always ends by running `verify_seo.rb` against production — that script requires `site-pages.json` with your real URLs, not the skill's placeholder paths.
 
-### Project install (recommended)
+```
+1. Install the skill     →  .cursor/skills/ or .claude/skills/
+2. Copy verifier files   →  script/verify_seo.rb + script/site-pages.json
+3. Edit site-pages.json  →  your HTML paths, .md mirrors, section indexes
+4. Invoke the skill      →  /audit-ai-seo with your production URL
+```
 
-Add the skill to the repo you're auditing so the whole team shares the same workflow.
+### 1. Install the skill
+
+**Project install (recommended)** — add the skill to the repo you're auditing so the whole team shares the same workflow. Git stays in `/tmp/zcr-skills` only; your project's skill folder is a plain copy with no `.git`. Do **not** `git clone` directly into `.cursor/skills/` or `.claude/skills/`.
 
 **Cursor** — from your project root:
 
@@ -40,7 +47,7 @@ if [ -d /tmp/zcr-skills/.git ]; then
 else
   git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
 fi
-cp -r /tmp/zcr-skills/audit-ai-seo .cursor/skills/
+rsync -a --delete --exclude='.git' /tmp/zcr-skills/audit-ai-seo/ .cursor/skills/audit-ai-seo/
 ```
 
 **Claude Code** — from your project root:
@@ -52,22 +59,12 @@ if [ -d /tmp/zcr-skills/.git ]; then
 else
   git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
 fi
-cp -r /tmp/zcr-skills/audit-ai-seo .claude/skills/
-```
-
-After the agent runs an audit, copy the verifier into the same project (not the skills folder):
-
-```bash
-mkdir -p script
-cp .cursor/skills/audit-ai-seo/scripts/verify_seo.rb script/
-cp .cursor/skills/audit-ai-seo/site-pages.json script/
-# edit script/site-pages.json for your URLs, then:
-ruby script/verify_seo.rb https://example.com
+rsync -a --delete --exclude='.git' /tmp/zcr-skills/audit-ai-seo/ .claude/skills/audit-ai-seo/
 ```
 
 ### Global install (optional)
 
-Use on any project without installing the skill in each repo.
+Use on any project without installing the skill in each repo. Clone stays in `/tmp` only.
 
 | Agent | Path |
 |-------|------|
@@ -81,81 +78,276 @@ if [ -d /tmp/zcr-skills/.git ]; then
 else
   git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
 fi
-cp -r /tmp/zcr-skills/audit-ai-seo ~/.cursor/skills/audit-ai-seo   # or ~/.claude/skills/
+rsync -a --delete --exclude='.git' /tmp/zcr-skills/audit-ai-seo/ ~/.cursor/skills/audit-ai-seo/   # or ~/.claude/skills/
 ```
 
 Other clients: same folder layout; see [agentskills.io](https://agentskills.io/home) for paths.
 
-## How to invoke
+### 2. Copy the verifier into your project
 
-Once the skill is in `.cursor/skills/audit-ai-seo` or `.claude/skills/audit-ai-seo`, open the **project root** in your agent. The skill is discovered automatically from `SKILL.md` — no extra config.
+The skill lives in `.cursor/skills/` or `.claude/skills/`. The verifier runs from your project — copy both files into `script/`:
 
-### Cursor
-
-Type `/audit-ai-seo` in **Agent** chat to invoke it explicitly.
-
-Or describe the task in natural language; the agent matches against the skill description and loads the full workflow when relevant:
-
-```
-Audit AI SEO for https://example.com — Layer 0 and Layer 1, then verify production.
+```bash
+mkdir -p script
+cp .cursor/skills/audit-ai-seo/scripts/verify_seo.rb script/
+cp .cursor/skills/audit-ai-seo/site-pages.json script/
 ```
 
+For Claude Code, swap `.cursor` → `.claude` in those paths.
+
+### 3. Configure `site-pages.json`
+
+Edit `script/site-pages.json` with **your** live URLs. The bundled file ships with example paths (`/guide/introduction/`, etc.) — the verifier will fail against a real site until you replace them.
+
+**Site map mental model** — how the keys relate:
+
 ```
-Implement llms.txt, .md mirrors, and Accept negotiation for this site.
+https://example.com/
+├── /                          ← html_paths + /index.md in md_paths
+├── /guide/                    ← section_indexes (section landing)
+│   ├── guide.md               ← section_indexes md pair
+│   └── /guide/introduction/   ← html_paths (deep content page)
+│       └── introduction.md    ← md_paths
+└── /blog/                     ← section_indexes
+    └── blog.md
+```
+
+#### `html_paths` (required)
+
+**What:** Representative **HTML content pages** — not section indexes. Pick 2–4 live pages that use your main templates (home, one guide chapter, one blog post, one docs page).
+
+**Why:** The verifier checks each for a single `<title>`, meta description, canonical, Open Graph, JSON-LD, `<link rel="alternate" type="text/markdown">`, hidden LLM pointer, and HTTP `Link` headers.
+
+**Examples:**
+
+| Site type | Good picks |
+|-----------|------------|
+| Marketing site | `["/"]` |
+| Docs + blog | `["/", "/docs/getting-started/", "/blog/my-first-post/"]` |
+| Guide only | `["/", "/guide/introduction/", "/guide/chapter-2/"]` |
+
+```json
+"html_paths": ["/", "/guide/introduction/", "/blog/2024/launch-post/"]
+```
+
+Use trailing slashes if that is how your site serves URLs (`/guide/introduction/` not `/guide/introduction`).
+
+---
+
+#### `md_paths` (required)
+
+**What:** The **`.md` mirror URLs** for the same kinds of pages — direct fetches, not derived from HTML paths.
+
+**Why:** Confirms agents get clean Markdown (not HTML), and that the `.md` response includes a `Link` header pointing back to HTML.
+
+**Rule of thumb:** For every path in `html_paths`, add the matching `.md` URL:
+
+| HTML | `.md` mirror |
+|------|----------------|
+| `/` | `/index.md` |
+| `/guide/introduction/` | `/guide/introduction.md` |
+| `/about/` | `/about.md` |
+
+```json
+"md_paths": ["/index.md", "/guide/introduction.md", "/blog/2024/launch-post.md"]
+```
+
+---
+
+#### `section_indexes` (required)
+
+**What:** **Section landing pages** — the index/listing page for each major area of the site (guide overview, blog index, docs hub). Each entry is an `html` + `md` pair.
+
+**Why:** Section indexes often use a different template than inner pages. They need their own `.md` mirror (e.g. `/guide.md` for `/guide/`) and are easy to forget. The verifier runs the full HTML + MD checks on both URLs in each pair.
+
+**Not** the same as `html_paths`:
+- `section_indexes` → “table of contents” pages (`/guide/`, `/blog/`)
+- `html_paths` → actual articles/chapters (`/guide/introduction/`)
+
+**Examples:**
+
+Docs site with guide and blog:
+
+```json
+"section_indexes": [
+  { "html": "/guide/", "md": "/guide.md" },
+  { "html": "/blog/", "md": "/blog.md" }
+]
+```
+
+Single-page marketing site with no sections:
+
+```json
+"section_indexes": []
+```
+
+Only a blog (no separate guide):
+
+```json
+"section_indexes": [
+  { "html": "/blog/", "md": "/blog.md" }
+]
+```
+
+---
+
+#### `check_llms_full_txt` (optional, default `true`)
+
+**What:** Whether to fetch `/llms-full.txt` — one file with your entire docs corpus in Markdown.
+
+**When `true`:** Docs sites, APIs, large guides (agents can load everything at once).
+
+**When `false`:** Blogs, marketing sites, or anywhere you only ship `/llms.txt` + per-page `.md` mirrors.
+
+```json
+"check_llms_full_txt": false
+```
+
+---
+
+#### `require_feed` (optional, default `false`)
+
+**What:** Whether to check `/feed.xml` exists and looks like Atom/RSS.
+
+**When `true`:** Site has a blog or publishes feed updates.
+
+**When `false`:** Static landing page with no feed.
+
+```json
+"require_feed": true
+```
+
+---
+
+#### `require_json_ld` (optional, default `true`)
+
+**What:** Whether sample HTML pages must include `application/ld+json` with `schema.org`.
+
+**When `true`:** Normal production sites targeting Google rich results.
+
+**When `false`:** Staging, or you are only testing Layer 1 (LLM) checks for now.
+
+```json
+"require_json_ld": true
+```
+
+---
+
+#### `require_markdown_negotiation` (optional, default `true`)
+
+**What:** Whether to request each `html_paths` URL with `Accept: text/markdown` and expect Markdown back (plus `Vary: Accept`).
+
+**When `true`:** You have edge/server negotiation wired up (Netlify edge function, etc.).
+
+**When `false`:** You only serve `.md` at explicit `.md` URLs and have not shipped negotiation yet.
+
+```json
+"require_markdown_negotiation": false
+```
+
+---
+
+#### Full examples by site type
+
+**Docs + blog** (default template in [site-pages.json](site-pages.json)):
+
+```json
+{
+  "html_paths": ["/", "/guide/introduction/"],
+  "md_paths": ["/index.md", "/guide/introduction.md"],
+  "section_indexes": [
+    { "html": "/guide/", "md": "/guide.md" },
+    { "html": "/blog/", "md": "/blog.md" }
+  ],
+  "check_llms_full_txt": true,
+  "require_feed": true,
+  "require_json_ld": true,
+  "require_markdown_negotiation": true
+}
+```
+
+**Blog only:**
+
+```json
+{
+  "html_paths": ["/", "/blog/hello-world/"],
+  "md_paths": ["/index.md", "/blog/hello-world.md"],
+  "section_indexes": [
+    { "html": "/blog/", "md": "/blog.md" }
+  ],
+  "check_llms_full_txt": false,
+  "require_feed": true,
+  "require_json_ld": true,
+  "require_markdown_negotiation": true
+}
+```
+
+**Single landing page:**
+
+```json
+{
+  "html_paths": ["/"],
+  "md_paths": ["/index.md"],
+  "section_indexes": [],
+  "check_llms_full_txt": false,
+  "require_feed": false,
+  "require_json_ld": true,
+  "require_markdown_negotiation": false
+}
+```
+
+### 4. Invoke the skill
+
+With the skill installed and `script/site-pages.json` configured, open the **project root** in your agent.
+
+**Cursor** — type `/audit-ai-seo` in **Agent** chat, or use natural language:
+
+```
+Audit AI SEO for https://myapp.com — Layer 0 and Layer 1, then verify production using script/site-pages.json.
 ```
 
 ```
-We’re not showing up in AI answers. Run the audit-ai-seo workflow and fix gaps.
+Implement llms.txt, .md mirrors, and Accept negotiation. Run script/verify_seo.rb when done.
+```
+
+```
+We're not showing up in AI answers. Run audit-ai-seo and fix gaps.
 ```
 
 To confirm the skill is loaded: **Cursor Settings → Rules** — `audit-ai-seo` should appear under skills.
 
-### Claude Code
-
-From the project directory, invoke the skill by name or intent:
+**Claude Code** — from the project directory:
 
 ```
 /audit-ai-seo
 ```
 
 ```
-Follow the audit-ai-seo skill. Audit https://example.com and hand off script/site-pages.json.
+Follow audit-ai-seo. Audit https://myapp.com — script/site-pages.json is already configured.
 ```
 
-Claude Code loads project skills from `.claude/skills/` the same way — discovery from `name` and `description` in `SKILL.md`.
-
-### What to include in your prompt
-
-Give the agent enough context on the first message:
+**Include in your first prompt:**
 
 | Include | Example |
 |---------|---------|
 | Production URL | `https://myapp.com` |
 | Stack | Bridgetown, Rails, Next.js, static on Netlify, … |
 | Scope | audit only, implement fixes, or verify after deploy |
-
-The skill ends every pass by copying `verify_seo.rb` and `site-pages.json` into your project and running the verifier against production.
+| Config location | `script/site-pages.json` (so the agent uses your paths) |
 
 ## Agent workflow
+
+What the skill does once invoked:
 
 1. Audit the live site (or local build output)
 2. Report gaps as Layer 0 vs Layer 1 vs content
 3. Implement fixes (each step is independently shippable)
-4. Verify with `scripts/verify_seo.rb` against the **production** URL
-5. Copy `verify_seo.rb` and `site-pages.json` into the target project for ongoing checks
+4. Verify with `script/verify_seo.rb` against the **production** URL
+5. Re-run the verifier after deploys using the same `site-pages.json`
 
 ## Live verifier
 
-Stdlib-only Ruby script. No gems. **Requires `site-pages.json`** — lists which pages on your site to check.
-
-Copy both files into your project:
-
-```bash
-cp scripts/verify_seo.rb /path/to/project/script/
-cp site-pages.json /path/to/project/script/
-```
-
-Edit `site-pages.json` with your real HTML paths, `.md` mirrors, and section indexes, then run:
+Stdlib-only Ruby. No gems. Reads `script/site-pages.json` (required).
 
 ```bash
 ruby script/verify_seo.rb https://example.com
@@ -167,35 +359,6 @@ The script finds `site-pages.json` next to itself or in the working directory. O
 
 ```bash
 ruby script/verify_seo.rb https://example.com ./script/site-pages.json
-```
-
-### site-pages.json
-
-| Key | Required | Purpose |
-|-----|----------|---------|
-| `sample_html_paths` | yes | HTML pages to check (title, OG, canonical, JSON-LD, Link headers) |
-| `sample_md_paths` | yes | `.md` mirror URLs to fetch |
-| `section_indexes` | yes | Section landing pages (`html` + `md` pairs); use `[]` if none |
-| `check_llms_full_txt` | no | Check `/llms-full.txt` exists (default `true`; set `false` for blogs) |
-| `require_feed` | no | Check `/feed.xml` (default `false`) |
-| `require_json_ld` | no | Require JSON-LD on sample HTML pages (default `true`) |
-| `require_markdown_negotiation` | no | Test `Accept: text/markdown` (default `true`) |
-
-Example (included in this skill as [site-pages.json](site-pages.json)):
-
-```json
-{
-  "sample_html_paths": ["/", "/guide/introduction/"],
-  "sample_md_paths": ["/index.md", "/guide/introduction.md"],
-  "section_indexes": [
-    { "html": "/guide/", "md": "/guide.md" },
-    { "html": "/blog/", "md": "/blog.md" }
-  ],
-  "check_llms_full_txt": true,
-  "require_feed": false,
-  "require_json_ld": true,
-  "require_markdown_negotiation": true
-}
 ```
 
 Exit code `1` if any check **FAIL**s; **WARN** lines are backlog unless you want zero warnings.
