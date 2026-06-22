@@ -12,29 +12,30 @@ That gives agents domain-specific checklists, conventions, and tooling so audits
 
 ## Installation
 
-**Project install (recommended)** — commit the skill with your repo so everyone on the team gets the same workflow.
+**Project install (recommended)** — install the skill inside the project so the whole team shares the same workflow.
 
 From your project root:
 
 **Cursor**
 
 ```bash
+mkdir -p /tmp .cursor/skills
 git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
 cp -r /tmp/zcr-skills/audit-ai-seo .cursor/skills/
-git add .cursor/skills/audit-ai-seo
 ```
 
 **Claude Code**
 
 ```bash
+mkdir -p /tmp .claude/skills
 git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
 cp -r /tmp/zcr-skills/audit-ai-seo .claude/skills/
-git add .claude/skills/audit-ai-seo
 ```
 
 Or add as a git submodule:
 
 ```bash
+mkdir -p .cursor/skills
 git submodule add git@github.com:Zero-Config-Rails/skills.git .cursor/skills/zcr-skills
 # then symlink or copy the skill you need, e.g.:
 ln -s zcr-skills/audit-ai-seo .cursor/skills/audit-ai-seo
@@ -51,8 +52,9 @@ Install once on your machine if you want the skill in every project without addi
 **Cursor**
 
 ```bash
-git clone git@github.com:Zero-Config-Rails/skills.git
-cp -r skills/audit-ai-seo ~/.cursor/skills/audit-ai-seo
+mkdir -p /tmp ~/.cursor/skills
+git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+cp -r /tmp/zcr-skills/audit-ai-seo ~/.cursor/skills/audit-ai-seo
 # or symlink while developing:
 ln -s "$(pwd)/audit-ai-seo" ~/.cursor/skills/audit-ai-seo
 ```
@@ -60,8 +62,9 @@ ln -s "$(pwd)/audit-ai-seo" ~/.cursor/skills/audit-ai-seo
 **Claude Code**
 
 ```bash
-git clone git@github.com:Zero-Config-Rails/skills.git
-cp -r skills/audit-ai-seo ~/.claude/skills/audit-ai-seo
+mkdir -p /tmp ~/.claude/skills
+git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+cp -r /tmp/zcr-skills/audit-ai-seo ~/.claude/skills/audit-ai-seo
 ```
 
 Global paths: `~/.cursor/skills/audit-ai-seo` (Cursor), `~/.claude/skills/audit-ai-seo` (Claude Code).

@@ -29,22 +29,22 @@ Ask your agent (Cursor, Claude Code, etc.) to audit SEO, implement LLM visibilit
 
 ### Project install (recommended)
 
-Add the skill to the repo you're auditing so the whole team shares the same workflow. Commit `.cursor/skills/` or `.claude/skills/` with your project.
+Add the skill to the repo you're auditing so the whole team shares the same workflow.
 
 **Cursor** — from your project root:
 
 ```bash
+mkdir -p /tmp .cursor/skills
 git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
 cp -r /tmp/zcr-skills/audit-ai-seo .cursor/skills/
-git add .cursor/skills/audit-ai-seo
 ```
 
 **Claude Code** — from your project root:
 
 ```bash
+mkdir -p /tmp .claude/skills
 git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
 cp -r /tmp/zcr-skills/audit-ai-seo .claude/skills/
-git add .claude/skills/audit-ai-seo
 ```
 
 After the agent runs an audit, copy the verifier into the same project (not the skills folder):
@@ -59,7 +59,7 @@ ruby script/verify_seo.rb https://example.com
 
 ### Global install (optional)
 
-Use on any project without committing the skill to each repo.
+Use on any project without installing the skill in each repo.
 
 | Agent | Path |
 |-------|------|
@@ -67,8 +67,9 @@ Use on any project without committing the skill to each repo.
 | Claude Code | `~/.claude/skills/audit-ai-seo` |
 
 ```bash
-git clone git@github.com:Zero-Config-Rails/skills.git
-cp -r skills/audit-ai-seo ~/.cursor/skills/audit-ai-seo   # or ~/.claude/skills/
+mkdir -p /tmp ~/.cursor/skills   # or ~/.claude/skills
+git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
+cp -r /tmp/zcr-skills/audit-ai-seo ~/.cursor/skills/audit-ai-seo   # or ~/.claude/skills/
 ```
 
 Other clients: same folder layout; see [agentskills.io](https://agentskills.io/home) for paths.
