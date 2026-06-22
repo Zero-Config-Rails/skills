@@ -21,7 +21,7 @@ Two layers, one workflow, **equal priority**: Google search and LLM agents both 
 2. **Report** gaps as Layer 0 (Google/crawl) vs Layer 1 (LLM retrieval) vs content (comparisons, thin pages)
 3. **Implement** fixes (each step is independently shippable). For Accept negotiation, follow [references/accept-markdown-negotiation.md](references/accept-markdown-negotiation.md) — language-agnostic algorithm, test matrix, Rack/edge hooks.
 4. **Verify** with `scripts/verify_seo.rb` against production URL
-5. **Hand off** a project-local copy of the verifier **and** `site-pages.json` (customized paths) so the user can re-run anytime
+5. **Hand off** project `site-pages.json` (customized paths). Re-run verifier from the skill — no need to copy `verify_seo.rb`.
 
 ---
 
@@ -200,7 +200,7 @@ Other stacks: same outputs, different build hooks (Jekyll plugin, Next.js route,
 
 After every audit or implementation pass:
 
-1. Copy [scripts/verify_seo.rb](scripts/verify_seo.rb) and [site-pages.json](site-pages.json) into the project (e.g. `script/verify_seo.rb` and `script/site-pages.json`)
+1. Ensure project has `site-pages.json` (copy [site-pages.json](site-pages.json) template from skill to project root or `script/`, then edit)
 2. Edit `site-pages.json` — **required**. Lists which HTML pages, `.md` mirrors, and section indexes to probe:
 
 ```json
@@ -218,18 +218,18 @@ After every audit or implementation pass:
 }
 ```
 
-3. Run against **production** (negotiation and headers often differ from local):
+3. Run against **production** from project root (script stays in skill folder):
 
 ```bash
-ruby script/verify_seo.rb https://example.com
+ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb https://example.com
 # or
-SITE=https://example.com ruby script/verify_seo.rb
+SITE=https://example.com ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb
 ```
 
-The script auto-finds `site-pages.json` next to itself or in the working directory. Pass an explicit path if needed:
+Config is read from `./site-pages.json` or `./script/site-pages.json`. Pass an explicit path if needed:
 
 ```bash
-ruby script/verify_seo.rb https://example.com ./script/site-pages.json
+ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb https://example.com ./site-pages.json
 ```
 
 4. Fix any **FAIL** lines; treat **WARN** as backlog unless user wants zero warnings
@@ -284,7 +284,7 @@ Infrastructure gets agents **to** your text; content determines whether they **c
 - …
 
 ### Verify
-`ruby script/verify_seo.rb {URL}` (requires `script/site-pages.json`)
+`ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb {URL}` (requires project `site-pages.json`)
 ```
 
 ---

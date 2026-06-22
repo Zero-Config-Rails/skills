@@ -28,10 +28,10 @@ The skill **refuses debunked patterns** (`ai.txt`, AI-specific meta tags, User-A
 Complete all steps below **before** invoking the skill. The workflow always ends by running `verify_seo.rb` against production — that script requires `site-pages.json` with your real URLs, not the skill's placeholder paths.
 
 ```
-1. Install the skill     →  .cursor/skills/ or .claude/skills/
-2. Copy verifier files   →  script/verify_seo.rb + script/site-pages.json
-3. Edit site-pages.json  →  your HTML paths, .md mirrors, section indexes
-4. Invoke the skill      →  /audit-ai-seo with your production URL
+1. Install the skill        →  .cursor/skills/ or .claude/skills/
+2. Add site-pages.json      →  project root or script/ (copy template, edit URLs)
+3. Invoke the skill         →  /audit-ai-seo with your production URL
+4. Verify (agent or you)    →  ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb URL
 ```
 
 ### 1. Install the skill
@@ -83,17 +83,35 @@ rsync -a --delete --exclude='.git' /tmp/zcr-skills/audit-ai-seo/ ~/.cursor/skill
 
 Other clients: same folder layout; see [agentskills.io](https://agentskills.io/home) for paths.
 
-### 2. Copy the verifier into your project
+### 2. Add `site-pages.json` to your project
 
-The skill lives in `.cursor/skills/` or `.claude/skills/`. The verifier runs from your project — copy both files into `script/`:
+Copy the template from the skill and edit your URLs — **do not** edit the copy inside `.cursor/skills/`:
+
+```bash
+cp .cursor/skills/audit-ai-seo/site-pages.json ./site-pages.json
+# or: cp .cursor/skills/audit-ai-seo/site-pages.json script/site-pages.json
+```
+
+For Claude Code, swap `.cursor` → `.claude`.
+
+Run the verifier from the skill (no need to copy `verify_seo.rb`):
+
+```bash
+ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb https://example.com
+```
+
+The script looks for `./site-pages.json` or `./script/site-pages.json` in your project root. Updating the skill (`rsync` in step 1) refreshes the verifier automatically.
+
+### Optional: copy verifier for CI without the skill
+
+If CI cannot mount `.cursor/skills/`, copy the script alongside config:
 
 ```bash
 mkdir -p script
 cp .cursor/skills/audit-ai-seo/scripts/verify_seo.rb script/
-cp .cursor/skills/audit-ai-seo/site-pages.json script/
+cp site-pages.json script/
+ruby script/verify_seo.rb https://example.com
 ```
-
-For Claude Code, swap `.cursor` → `.claude` in those paths.
 
 ### 3. Configure `site-pages.json`
 
@@ -305,16 +323,16 @@ Full implementation checklist: [references/accept-markdown-negotiation.md](refer
 
 ### 4. Invoke the skill
 
-With the skill installed and `script/site-pages.json` configured, open the **project root** in your agent.
+With the skill installed and `site-pages.json` in your project, open the **project root** in your agent.
 
 **Cursor** — type `/audit-ai-seo` in **Agent** chat, or use natural language:
 
 ```
-Audit AI SEO for https://myapp.com — Layer 0 and Layer 1, then verify production using script/site-pages.json.
+Audit AI SEO for https://myapp.com — Layer 0 and Layer 1, then verify production.
 ```
 
 ```
-Implement llms.txt, .md mirrors, and Accept negotiation. Run script/verify_seo.rb when done.
+Implement llms.txt, .md mirrors, and Accept negotiation. Run verify from .cursor/skills/audit-ai-seo/scripts/ when done.
 ```
 
 ```
@@ -330,7 +348,7 @@ To confirm the skill is loaded: **Cursor Settings → Rules** — `audit-ai-seo`
 ```
 
 ```
-Follow audit-ai-seo. Audit https://myapp.com — script/site-pages.json is already configured.
+Follow audit-ai-seo. Audit https://myapp.com — site-pages.json is in the project root.
 ```
 
 **Include in your first prompt:**
@@ -340,7 +358,7 @@ Follow audit-ai-seo. Audit https://myapp.com — script/site-pages.json is alrea
 | Production URL | `https://myapp.com` |
 | Stack | Bridgetown, Rails, Next.js, static on Netlify, … |
 | Scope | audit only, implement fixes, or verify after deploy |
-| Config location | `script/site-pages.json` (so the agent uses your paths) |
+| Config location | `./site-pages.json` or `./script/site-pages.json` |
 
 ## Agent workflow
 
@@ -349,23 +367,23 @@ What the skill does once invoked:
 1. Audit the live site (or local build output)
 2. Report gaps as Layer 0 vs Layer 1 vs content
 3. Implement fixes (each step is independently shippable)
-4. Verify with `script/verify_seo.rb` against the **production** URL
-5. Re-run the verifier after deploys using the same `site-pages.json`
+4. Verify from `.cursor/skills/audit-ai-seo/scripts/verify_seo.rb` (or `.claude/skills/…`) against **production**
+5. Re-run after deploys — same skill script, same project `site-pages.json`
 
 ## Live verifier
 
-Stdlib-only Ruby. No gems. Reads `script/site-pages.json` (required).
+Stdlib-only Ruby. No gems. **Script stays in the skill**; config lives in your project.
 
 ```bash
-ruby script/verify_seo.rb https://example.com
+ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb https://example.com
 # or
-SITE=https://example.com ruby script/verify_seo.rb
+SITE=https://example.com ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb
 ```
 
-The script finds `site-pages.json` next to itself or in the working directory. Override with an explicit path:
+Finds `./site-pages.json` or `./script/site-pages.json` from your project root. Override explicitly:
 
 ```bash
-ruby script/verify_seo.rb https://example.com ./script/site-pages.json
+ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb https://example.com ./site-pages.json
 ```
 
 Exit code `1` if any check **FAIL**s; **WARN** lines are backlog unless you want zero warnings.

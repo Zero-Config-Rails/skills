@@ -3,15 +3,11 @@
 
 # Live SEO + LLM discoverability verifier (stdlib only).
 #
-# Requires site-pages.json — lists which pages on your site to check.
-# Copy site-pages.json from the audit-ai-seo skill and edit paths for your site.
+# Requires site-pages.json in your project (not the skill template).
+# Run from project root — script stays in the skill folder:
 #
-# Usage:
-#   ruby verify_seo.rb https://example.com
-#   ruby verify_seo.rb https://example.com ./site-pages.json
-#   SITE=https://example.com ruby verify_seo.rb
-#
-# Looks for site-pages.json next to this script, then ./site-pages.json in cwd.
+#   ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb https://example.com
+#   ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb https://example.com ./site-pages.json
 #
 # References:
 #   https://evilmartians.com/chronicles/how-to-make-your-website-visible-to-llms
@@ -79,22 +75,25 @@ class VerifySeo
 
     script_dir = File.dirname(File.expand_path($PROGRAM_NAME))
     candidates = [
-      File.join(script_dir, CONFIG_FILENAME),
-      File.join(script_dir, "..", CONFIG_FILENAME),
       File.join(Dir.pwd, CONFIG_FILENAME),
-      File.join(Dir.pwd, "script", CONFIG_FILENAME)
+      File.join(Dir.pwd, "script", CONFIG_FILENAME),
+      File.join(script_dir, CONFIG_FILENAME)
     ]
 
     found = candidates.find { |p| File.file?(p) }
     return found if found
 
     abort <<~MSG
-      Missing #{CONFIG_FILENAME} — copy it from the audit-ai-seo skill and list your site's pages to check.
+      Missing #{CONFIG_FILENAME} in your project — copy the template from the skill and edit your URLs:
 
-      Expected one of:
-        #{candidates.join("\n        ")}
+        cp .cursor/skills/audit-ai-seo/#{CONFIG_FILENAME} ./#{CONFIG_FILENAME}
+        # or: cp .cursor/skills/audit-ai-seo/#{CONFIG_FILENAME} script/#{CONFIG_FILENAME}
 
-      Usage: ruby verify_seo.rb https://example.com [path/to/site-pages.json]
+      Then run the verifier from the skill (no need to copy verify_seo.rb):
+
+        ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb https://example.com
+
+      Or pass an explicit config path.
     MSG
   end
 
