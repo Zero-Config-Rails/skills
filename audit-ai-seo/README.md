@@ -23,7 +23,7 @@ The skill **refuses debunked patterns** (`ai.txt`, AI-specific meta tags, User-A
 - Existing site: "why aren't we in AI answers / Google?"
 - After shipping discoverability changes: confirm production with the verifier
 
-Ask your agent (Cursor, Claude Code, etc.) to audit SEO, implement LLM visibility, or run the verify script against your live URL.
+See [How to invoke](#how-to-invoke) below for Cursor `/audit-ai-seo` and example prompts.
 
 ## Install
 
@@ -85,6 +85,56 @@ cp -r /tmp/zcr-skills/audit-ai-seo ~/.cursor/skills/audit-ai-seo   # or ~/.claud
 ```
 
 Other clients: same folder layout; see [agentskills.io](https://agentskills.io/home) for paths.
+
+## How to invoke
+
+Once the skill is in `.cursor/skills/audit-ai-seo` or `.claude/skills/audit-ai-seo`, open the **project root** in your agent. The skill is discovered automatically from `SKILL.md` — no extra config.
+
+### Cursor
+
+Type `/audit-ai-seo` in **Agent** chat to invoke it explicitly.
+
+Or describe the task in natural language; the agent matches against the skill description and loads the full workflow when relevant:
+
+```
+Audit AI SEO for https://example.com — Layer 0 and Layer 1, then verify production.
+```
+
+```
+Implement llms.txt, .md mirrors, and Accept negotiation for this site.
+```
+
+```
+We’re not showing up in AI answers. Run the audit-ai-seo workflow and fix gaps.
+```
+
+To confirm the skill is loaded: **Cursor Settings → Rules** — `audit-ai-seo` should appear under skills.
+
+### Claude Code
+
+From the project directory, invoke the skill by name or intent:
+
+```
+/audit-ai-seo
+```
+
+```
+Follow the audit-ai-seo skill. Audit https://example.com and hand off script/site-pages.json.
+```
+
+Claude Code loads project skills from `.claude/skills/` the same way — discovery from `name` and `description` in `SKILL.md`.
+
+### What to include in your prompt
+
+Give the agent enough context on the first message:
+
+| Include | Example |
+|---------|---------|
+| Production URL | `https://myapp.com` |
+| Stack | Bridgetown, Rails, Next.js, static on Netlify, … |
+| Scope | audit only, implement fixes, or verify after deploy |
+
+The skill ends every pass by copying `verify_seo.rb` and `site-pages.json` into your project and running the verifier against production.
 
 ## Agent workflow
 
