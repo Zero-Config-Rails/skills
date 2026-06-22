@@ -1,6 +1,6 @@
 # Zero Config Rails Skills
 
-[Agent Skills](https://agentskills.io/home) from the [Zero-Config-Rails](https://github.com/Zero-Config-Rails) ecosystem — portable folders with a `SKILL.md` that teach an agent a specialized workflow.
+[Agent Skills](https://agentskills.io/home) from the [Zero-Config-Rails](https://github.com/Zero-Config-Rails) ecosystem — one folder per skill, each with a `SKILL.md` that teaches an agent a specialized workflow.
 
 Works with **Cursor**, **Claude** (Claude Code and Claude.ai), and any other agent that implements the [Agent Skills open standard](https://agentskills.io/home).
 
@@ -8,96 +8,34 @@ Works with **Cursor**, **Claude** (Claude Code and Claude.ai), and any other age
 
 Agent Skills are lightweight instruction packs. At startup an agent loads each skill's `name` and `description`; when a task matches, it reads the full `SKILL.md` and follows the workflow. Bundled scripts and references load only when needed.
 
-That gives agents domain-specific checklists, conventions, and tooling so audits and implementations stay consistent across projects — regardless of which skills-compatible client you use.
+## Install a skill
 
-## Installation
+Pick the skill you need from the table below and follow **that skill's README** — install steps, config, and invoke commands live there.
 
-**Project install (recommended)** — install the skill inside the project so the whole team shares the same workflow.
+You install **one skill folder** into your project (e.g. `.cursor/skills/audit-ai-seo/`), not this whole repository. Each README has copy-paste commands to fetch just that skill and rsync it into your project without a nested `.git`.
 
-From your project root:
-
-**Cursor**
-
-```bash
-mkdir -p /tmp .cursor/skills
-if [ -d /tmp/zcr-skills/.git ]; then
-  git -C /tmp/zcr-skills pull --ff-only
-else
-  git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
-fi
-rsync -a --delete --exclude='.git' /tmp/zcr-skills/audit-ai-seo/ .cursor/skills/audit-ai-seo/
-```
-
-**Claude Code**
-
-```bash
-mkdir -p /tmp .claude/skills
-if [ -d /tmp/zcr-skills/.git ]; then
-  git -C /tmp/zcr-skills pull --ff-only
-else
-  git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
-fi
-rsync -a --delete --exclude='.git' /tmp/zcr-skills/audit-ai-seo/ .claude/skills/audit-ai-seo/
-```
-
-**Other agents** (Codex, Copilot, Gemini CLI, OpenCode, etc.)
-
-Use the same skill folder under your client's project skills path; see [agentskills.io](https://agentskills.io/home).
-
-### Global install (optional)
-
-Install once on your machine if you want the skill in every project without adding it to each repo. Same pattern: clone to `/tmp` only, copy files without `.git`.
-
-**Cursor**
-
-```bash
-mkdir -p /tmp ~/.cursor/skills
-if [ -d /tmp/zcr-skills/.git ]; then
-  git -C /tmp/zcr-skills pull --ff-only
-else
-  git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
-fi
-rsync -a --delete --exclude='.git' /tmp/zcr-skills/audit-ai-seo/ ~/.cursor/skills/audit-ai-seo/
-```
-
-**Claude Code**
-
-```bash
-mkdir -p /tmp ~/.claude/skills
-if [ -d /tmp/zcr-skills/.git ]; then
-  git -C /tmp/zcr-skills pull --ff-only
-else
-  git clone git@github.com:Zero-Config-Rails/skills.git /tmp/zcr-skills
-fi
-rsync -a --delete --exclude='.git' /tmp/zcr-skills/audit-ai-seo/ ~/.claude/skills/audit-ai-seo/
-```
-
-Global paths: `~/.cursor/skills/audit-ai-seo` (Cursor), `~/.claude/skills/audit-ai-seo` (Claude Code).
-
-## Available skills
-
-| Skill | Directory | Use when |
-|-------|-----------|----------|
-| [audit-ai-seo](audit-ai-seo/README.md) | `audit-ai-seo/` | Auditing or implementing Google SEO plus LLM/AI discoverability (robots, sitemaps, `llms.txt`, `.md` mirrors, Accept negotiation) |
+| Skill | Use when |
+|-------|----------|
+| **[audit-ai-seo](audit-ai-seo/README.md)** | Google SEO + LLM/AI discoverability (robots, sitemaps, `llms.txt`, `.md` mirrors, Accept negotiation) |
 
 ## Repository layout
 
 ```
 skills/
-├── README.md                 # this file
-└── audit-ai-seo/
-    ├── README.md             # skill overview and verifier usage
-    ├── SKILL.md              # full agent workflow (source of truth)
-    ├── site-pages.json       # required: which pages to verify (copy with script)
+├── README.md                 # this file — catalog only
+└── audit-ai-seo/             # one self-contained skill
+    ├── README.md             # install, setup, invoke (start here)
+    ├── SKILL.md              # agent workflow (source of truth)
+    ├── site-pages.json       # verifier config template
     └── scripts/
-        └── verify_seo.rb     # live production verifier (stdlib Ruby)
+        └── verify_seo.rb
 ```
 
 ## Adding a skill
 
 1. Create a directory with a `SKILL.md` (YAML frontmatter with `name` and `description`, plus markdown body).
 2. Add optional `scripts/`, `references/`, or `assets/` as needed.
-3. Add a skill-specific `README.md` for humans.
+3. Add a skill-specific `README.md` with install, setup, and invoke instructions.
 4. List the skill in the table above.
 
 Follow the [Agent Skills specification](https://agentskills.io/specification) and [quickstart](https://agentskills.io/skill-creation/quickstart).
