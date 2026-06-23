@@ -94,25 +94,6 @@ cp .cursor/skills/audit-ai-seo/site-pages.json ./site-pages.json
 
 For Claude Code, swap `.cursor` → `.claude`.
 
-Run the verifier from the skill (no need to copy `verify_seo.rb`):
-
-```bash
-ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb https://example.com
-```
-
-The script looks for `./site-pages.json` or `./script/site-pages.json` in your project root. Updating the skill (`rsync` in step 1) refreshes the verifier automatically.
-
-### Optional: copy verifier for CI without the skill
-
-If CI cannot mount `.cursor/skills/`, copy the script alongside config:
-
-```bash
-mkdir -p script
-cp .cursor/skills/audit-ai-seo/scripts/verify_seo.rb script/
-cp site-pages.json script/
-ruby script/verify_seo.rb https://example.com
-```
-
 ### 3. Configure `site-pages.json`
 
 Edit `script/site-pages.json` with **your** live URLs. The bundled file ships with example paths (`/guide/introduction/`, etc.) — the verifier will fail against a real site until you replace them.
