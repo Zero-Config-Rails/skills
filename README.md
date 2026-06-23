@@ -27,7 +27,7 @@ skills/
     ├── README.md             # install, setup, invoke (start here)
     ├── SKILL.md              # agent workflow (source of truth)
     ├── site-pages.json       # verifier config template
-    ├── references/           # on-demand docs (e.g. Accept negotiation)
+    ├── references/           # on-demand docs (negotiation, Rails, …)
     └── scripts/
         └── verify_seo.rb
 ```

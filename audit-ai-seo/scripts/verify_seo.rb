@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-# frozen_string_literal: true
 
 # Live SEO + LLM discoverability verifier (stdlib only).
 #
@@ -274,6 +273,67 @@ class VerifySeo
     check_html_page(html_path, expected_md: md_path)
   end
 
+  def check_json_ld(body, path)
+    blocks = extract_json_ld_blocks(body)
+    if blocks.empty?
+      fail("HTML #{path} JSON-LD", "missing <script type=\"application/ld+json\"> block")
+      return
+    end
+
+    blocks.each_with_index do |raw, index|
+      json_text = raw.strip
+      label = blocks.length == 1 ? "HTML #{path} JSON-LD" : "HTML #{path} JSON-LD [#{index + 1}]"
+
+      if json_text.match?(/&(quot|#\d+|#x[0-9a-f]+|amp|lt|gt);/i)
+        fail(label, "HTML-escaped JSON (&quot; etc.) — output raw JSON inside script tag, not ERB-escaped")
+        next
+      end
+
+      data = JSON.parse(json_text)
+      unless json_ld_has_schema_context?(data)
+        fail(label, "missing https://schema.org in @context")
+        next
+      end
+
+      pass(label, "valid JSON, @type #{json_ld_types(data)}")
+    rescue JSON::ParserError => e
+      fail(label, "unparseable JSON: #{e.message}")
+    end
+  end
+
+  def extract_json_ld_blocks(body)
+    body.scan(%r{<script[^>]*type=["']application/ld\+json["'][^>]*>(.*?)</script>}im).flatten
+  end
+
+  def json_ld_has_schema_context?(data)
+    case data
+    when Hash
+      data["@context"].to_s.include?("schema.org")
+    when Array
+      data.all? { |item| json_ld_has_schema_context?(item) }
+    else
+      false
+    end
+  end
+
+  def json_ld_types(data)
+    json_ld_nodes(data).filter_map { |node| node["@type"] }.join(", ")
+  end
+
+  def json_ld_nodes(data)
+    case data
+    when Array then data.flat_map { |item| json_ld_nodes(item) }
+    when Hash
+      if data["@graph"].is_a?(Array)
+        data["@graph"]
+      else
+        [data]
+      end
+    else
+      []
+    end
+  end
+
   def check_html_page(path, expected_md: nil)
     res = fetch(absolute(path))
     unless res[:code] == 200
@@ -313,11 +373,7 @@ class VerifySeo
     end
 
     if @config["require_json_ld"]
-      if body.include?("application/ld+json") && body.include?("schema.org")
-        pass("HTML #{path} JSON-LD", "present")
-      else
-        fail("HTML #{path} JSON-LD", "missing application/ld+json or schema.org @context")
-      end
+      check_json_ld(body, path)
     end
 
     md_path = expected_md || html_path_to_md(path)

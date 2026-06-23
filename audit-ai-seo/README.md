@@ -160,7 +160,9 @@ Use trailing slashes if that is how your site serves URLs (`/guide/introduction/
 | `/guide/introduction/` | `/guide/introduction.md` |
 | `/about/` | `/about.md` |
 
-Rule: strip trailing slash; `/` → `/index.md`; otherwise append `.md`. Do not add a separate `md_paths` key — the skill creates any missing mirrors during implementation.
+Rule: strip trailing slash; `/` → `/index.md`; otherwise append `.md`.
+
+**Rails 8.1+:** do not create static `public/*.md` files — use `respond_to format.md` instead ([references/rails.md](references/rails.md)). `site-pages.json` only lists routes to verify.
 
 ---
 
@@ -224,11 +226,11 @@ Blog only:
 
 #### `require_json_ld` (optional, default `true`)
 
-**What:** Whether sample HTML pages must include `application/ld+json` with `schema.org`.
+**What:** Whether sample HTML pages must include valid, **parseable** `application/ld+json` with `schema.org` `@context`.
 
-**When `true`:** Normal production sites targeting Google rich results.
+**Checks:** script block present, JSON parses, no HTML entities (`&quot;`), `@type` reported. Fails on ERB-escaped output like `{&quot;@context&quot;:...}`.
 
-**When `false`:** Staging, or you are only testing Layer 1 (LLM) checks for now.
+**When `false`:** Staging, or Layer 1-only pass for now.
 
 ```json
 "require_json_ld": true
@@ -362,7 +364,7 @@ Exit code `1` if any check **FAIL**s; **WARN** lines are backlog unless you want
 
 ### What it checks
 
-**Layer 0:** robots.txt, sitemap, Sitemap directive, AI bots not blocked, Content-Signal, single title/description, canonical, Open Graph, JSON-LD, optional feed
+**Layer 0:** robots.txt, sitemap, Sitemap directive, AI bots not blocked, Content-Signal, single title/description, canonical, Open Graph, JSON-LD (valid JSON, not `&quot;`-escaped), optional feed
 
 **Layer 1:** `llms.txt`, `llms-full.txt`, `.md` mirrors, HTML `link alternate`, HTTP `Link` headers, hidden LLM pointer, `Accept: text/markdown` negotiation (including **406** for unsupported `Accept` types) + `Vary: Accept`
 
@@ -374,7 +376,11 @@ Optional external scanners after a green run:
 
 ## Stack notes
 
-Documented for Bridgetown / static-site patterns in [SKILL.md](SKILL.md#stack-notes-bridgetown--static). The same outputs apply to Jekyll, Next.js, Rails, or Nginx/Caddy — different build hooks, same deliverables.
+| Stack | Guide |
+|-------|--------|
+| **Rails 8.1+** | [references/rails.md](references/rails.md) — `respond_to format.md`, static `public/sitemap.xml` at deploy (no `SitemapsController`) |
+| **Bridgetown / static** | [SKILL.md](SKILL.md#stack-notes) — build plugins, edge negotiate, `.md` mirrors |
+| **Other** | [acceptmarkdown.com](https://acceptmarkdown.com) recipes |
 
 ## References
 

@@ -133,7 +133,8 @@ External checker: [acceptmarkdown.com](https://acceptmarkdown.com/#readiness)
 |-------|------------|
 | Netlify | Edge function on `/*` (see minitestrails pattern) |
 | Cloudflare | Worker `fetch` handler or [zero-config rules](https://acceptmarkdown.com) |
-| Rack (Rails) | Middleware before router; `env["HTTP_ACCEPT"]`, rewrite to `.md` route or internal redirect |
+| Rack (Rails 8.1+) | `respond_to format.md` — see [rails.md](rails.md); do not duplicate with middleware |
+| Rack (other) | Middleware before router; see algorithm above |
 | Nginx / Caddy | `map $http_accept` + `error_page 406` — [recipes](https://acceptmarkdown.com) |
 | Next.js / Astro | Middleware `request.headers.get("accept")` |
 | Bridgetown | Netlify edge + static `.md` output from plugin |

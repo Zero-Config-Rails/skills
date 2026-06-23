@@ -1,6 +1,6 @@
 ---
 name: audit-ai-seo
-description: Audit and implement Google SEO plus LLM/AI discoverability for websites, docs, blogs, and landing pages. Covers robots.txt, sitemaps, meta tags, JSON-LD, feeds, llms.txt, .md mirrors, Link headers, Accept text/markdown negotiation, and Content-Signal. Use for SEO audits, GEO/AI-readable sites, minitestrails-style Bridgetown/Rails static sites, or when the user wants a live verification script. Refuses debunked AI patterns (ai.txt, AI meta tags, UA sniffing). Ends every audit or implementation with a Ruby verifier against the live site.
+description: Audit and implement Google SEO plus LLM/AI discoverability for websites, docs, blogs, and landing pages. Covers robots.txt, sitemaps, meta tags, JSON-LD, feeds, llms.txt, .md mirrors, Link headers, Accept text/markdown negotiation, and Content-Signal. Use for SEO audits, GEO/AI-readable sites, Bridgetown/static sites, or Rails 8.1+ apps. Refuses debunked AI patterns (ai.txt, AI meta tags, UA sniffing), dynamic SitemapsController, and public/*.md on Rails. Ends every audit or implementation with a Ruby verifier against the live site.
 ---
 
 # Audit AI SEO (Google + LLM discoverability)
@@ -19,7 +19,9 @@ Two layers, one workflow, **equal priority**: Google search and LLM agents both 
 
 1. **Audit** live site (or local build output if not deployed)
 2. **Report** gaps as Layer 0 (Google/crawl) vs Layer 1 (LLM retrieval) vs content (comparisons, thin pages)
-3. **Implement** fixes (each step is independently shippable). For Accept negotiation, follow [references/accept-markdown-negotiation.md](references/accept-markdown-negotiation.md) — language-agnostic algorithm, test matrix, Rack/edge hooks.
+3. **Implement** fixes (each step is independently shippable).
+   - **Rails 8.1+:** [references/rails.md](references/rails.md) — `respond_to` `format.md`, static `public/sitemap.xml` at deploy; refuse dynamic SEO controllers.
+   - **Static sites:** [references/accept-markdown-negotiation.md](references/accept-markdown-negotiation.md) — edge/middleware negotiation, build-time `.md` mirrors.
 4. **Verify** with `scripts/verify_seo.rb` against production URL
 5. **Hand off** project `site-pages.json` (customized paths). Re-run verifier from the skill — no need to copy `verify_seo.rb`.
 
@@ -49,6 +51,7 @@ Confirm `ai-train=yes` with the owner. Validators may warn about unknown directi
 - [ ] Exclude drafts, coming-soon, future-dated posts, admin, thank-you pages
 - [ ] Reasonable `changefreq` / `lastmod` (avoid `yearly` for normal pages)
 - [ ] Submit in Google Search Console after deploy
+- [ ] **Rails:** static `public/sitemap.xml` generated at **deploy** (`rails seo:generate_files` or similar) — **not** a `SitemapsController` that renders XML on every crawl ([references/rails.md](references/rails.md))
 
 ### Page metadata (every indexable template)
 
@@ -61,6 +64,28 @@ Confirm `ai-train=yes` with the owner. Validators may warn about unknown directi
 ### Structured data (Google, required)
 
 Ship schema.org JSON-LD on every indexable page type. Validate with [Google Rich Results Test](https://search.google.com/test/rich-results) after deploy.
+
+**Output raw JSON inside the script tag** — crawlers must see `{"@context":...}` not HTML entities (`&quot;`). Common bug: ERB `<%= %>` escapes JSON.
+
+Bridgetown / ERB — use unescaped output:
+
+```erb
+<script type="application/ld+json"><%== json_ld.to_json %></script>
+```
+
+Rails — use `safe_join` / `.html_safe` on JSON only inside `type: application/ld+json` script tags, or a helper that does not escape quotes.
+
+Wrong (unparseable):
+
+```html
+<script type="application/ld+json">{&quot;@context&quot;:&quot;https://schema.org&quot;...}</script>
+```
+
+Right:
+
+```html
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"LearningResource",...}</script>
+```
 
 - [ ] Home: `WebSite` + `SearchAction` (or equivalent site-level type)
 - [ ] Guide index: `Course` or `LearningResource` with `hasPart` / chapter list where practical
@@ -121,7 +146,7 @@ Curated Markdown at site root ([llmstxt.org](https://llmstxt.org/) format). READ
 
 ### 2. `.md` mirrors
 
-For `/path/` serve `/path.md` (root → `/index.md`). **Single source of truth** (generate from same content as HTML). No YAML front matter in the served body.
+**Static sites (Bridgetown, Jekyll, etc.):** For `/path/` serve `/path.md` (root → `/index.md`). **Single source of truth** (generate from same content as HTML). No YAML front matter in the served body.
 
 When auditing or implementing: for every URL in `site-pages.json` `html_paths` and `section_indexes`, derive the `.md` path and **ship it** if missing:
 
@@ -133,6 +158,8 @@ When auditing or implementing: for every URL in `site-pages.json` `html_paths` a
 | `/about/` | `/about.md` |
 
 Rule: strip trailing slash, `/` → `/index.md`, else append `.md`.
+
+**Rails 8.1+:** Do **not** create static `public/*.md` files. Use `respond_to` `format.md` with `to_markdown` or `.md.erb` templates on the same routes ([references/rails.md](references/rails.md)). `site-pages.json` lists routes to verify only.
 
 ### 3. Advertise Markdown (both HTML tag and HTTP header)
 
@@ -190,20 +217,34 @@ Server-side logs for `.md`, `/llms.txt`, `/llms-full.txt` by User-Agent and refe
 | UA sniffing → Markdown for bots | Cloaking |
 | Dedicated "AI info pages" | `/llms.txt` is enough |
 | JSON-LD for LLM visibility | Proven ignored by major LLMs |
+| `<%= json %>` inside `application/ld+json` script (ERB escape) | `<%== json.to_json %>` — raw JSON, no `&quot;` |
+| `SitemapsController` / dynamic `sitemap.xml` action (Rails) | Static `public/sitemap.xml` generated at deploy |
+| `public/*.md` mirror files (Rails) | `respond_to format.md` + `to_markdown` |
+| Dynamic `robots` or `feed` controllers when static suffices | `public/robots.txt`, `public/feed.xml` from deploy task |
 
 ---
 
-## Stack notes (Bridgetown / static)
+## Stack notes
 
-This repo pattern (adapt for other stacks):
+### Bridgetown / static
 
 - `plugins/builders/seo_discoverability.rb` → `sitemap.xml`, `feed.xml`
 - `plugins/seo_discoverability.rb` → `llms.txt`, `llms-full.txt`, `.md` mirrors, `output/_headers`
 - `src/_partials/_head.erb` → single `seo` tag, `link alternate`, feed link
-- `netlify/edge-functions/` → Accept negotiation middleware (see [references/accept-markdown-negotiation.md](references/accept-markdown-negotiation.md))
+- `netlify/edge-functions/` → Accept negotiation (see [accept-markdown-negotiation.md](references/accept-markdown-negotiation.md))
 - `Shared::MarkdownAlternatePointer` → hidden LLM hint
 
-Other stacks: same outputs, different build hooks (Jekyll plugin, Next.js route, Rails `Mime::Type.register`, Nginx/Caddy recipes at [acceptmarkdown.com](https://acceptmarkdown.com)).
+### Rails 8.1+
+
+Full checklist: **[references/rails.md](references/rails.md)**
+
+- Layer 0: `bin/rails seo:generate_files` (or similar) → `public/sitemap.xml`, `public/robots.txt`, `public/feed.xml` at deploy
+- Layer 1: `respond_to { |f| f.html; f.md { render markdown: @record } }` — no edge negotiate, no `public/*.md`
+- `site-pages.json`: route paths for the verifier only
+
+### Other stacks
+
+Jekyll plugin, Next.js route, Nginx/Caddy — [acceptmarkdown.com](https://acceptmarkdown.com) recipes.
 
 ---
 
@@ -225,7 +266,7 @@ After every audit or implementation pass:
 }
 ```
 
-`.md` mirror paths are **derived automatically** from each HTML path (see mapping below) — do not list them in config. When implementing, the agent must **create** each derived `.md` file/route if missing.
+`.md` mirror paths are **derived automatically** for the verifier. **Static sites:** create each derived file if missing. **Rails 8.1+:** implement `respond_to format.md` instead — see [references/rails.md](references/rails.md).
 
 3. Run against **production** from project root (script stays in skill folder):
 
@@ -248,7 +289,7 @@ The script uses stdlib only (no gems). Exit code 1 if any check failed.
 
 ### What the verifier checks
 
-**Layer 0:** robots.txt, sitemap, Sitemap directive, AI bots not blocked, Content-Signal, single title/description, canonical, Open Graph, JSON-LD, optional feed
+**Layer 0:** robots.txt, sitemap, Sitemap directive, AI bots not blocked, Content-Signal, single title/description, canonical, Open Graph, JSON-LD (valid parseable JSON, not HTML-escaped), optional feed
 
 **Layer 1:** llms.txt, llms-full.txt, `.md` mirrors, HTML `link alternate`, HTTP `Link` headers, hidden LLM pointer, `Accept: text/markdown` negotiation (Markdown served, 406 unsupported, q-values, `*/*` → HTML, `Vary: Accept`) — see [references/accept-markdown-negotiation.md](references/accept-markdown-negotiation.md)
 
