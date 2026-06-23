@@ -1,6 +1,6 @@
 ---
 name: audit-ai-seo
-description: Audit and implement Google SEO plus LLM/AI discoverability for websites, docs, blogs, and landing pages. Covers robots.txt, sitemaps, meta tags, JSON-LD, feeds, llms.txt, .md mirrors, Link headers, Accept text/markdown negotiation, and Content-Signal. Use for SEO audits, GEO/AI-readable sites, Bridgetown/static sites, or Rails 8.1+ apps. Refuses debunked AI patterns (ai.txt, AI meta tags, UA sniffing), dynamic SitemapsController, and public/*.md on Rails. Ends every audit or implementation with a Ruby verifier against the live site.
+description: Audit and implement Google SEO plus LLM/AI discoverability for websites, docs, blogs, and landing pages. Infrastructure only — never create dummy posts, sample content, or new site sections to pass the verifier. Covers robots.txt, sitemaps, meta tags, JSON-LD, feeds, llms.txt, .md mirrors, Link headers, Accept negotiation, and Content-Signal. Use for SEO audits, Bridgetown/static sites, or Rails 8.1+ apps. Refuses debunked AI patterns, placeholder content, and dynamic SEO controllers. Ends with Ruby verifier against production.
 ---
 
 # Audit AI SEO (Google + LLM discoverability)
@@ -8,6 +8,15 @@ description: Audit and implement Google SEO plus LLM/AI discoverability for webs
 Two layers, one workflow, **equal priority**: Google search and LLM agents both need a complete ship. Framework from [Evil Martians Ruby scorecard](https://ruby.evilmartians.com/) (Layer 0 crawl + Layer 1 retrieval) and [How to make your website visible to LLMs](https://evilmartians.com/chronicles/how-to-make-your-website-visible-to-llms). LLM mechanics follow the official [llms-visibility skill](https://evilmartians.com/skills/llms-visibility.md).
 
 **JSON-LD is for Google/Bing rich results, not LLM citations.** Ship it anyway as part of Layer 0. Do not add schema.org *for* LLM visibility; do not remove existing structured data.
+
+**Infrastructure only.** This skill wires SEO and LLM discoverability (robots, sitemap, meta, JSON-LD, `llms.txt`, negotiation, etc.). It does **not** author editorial content. Never create dummy posts, sample articles, scaffold blogs, or filler pages to make the verifier pass. If a path in `site-pages.json` does not exist on the site, **remove it from config** — do not invent content.
+
+## Agent rules (mandatory)
+
+1. **Infrastructure only** — wire robots, sitemap, meta, JSON-LD, `llms.txt`, `.md` routes, negotiation. Do not write posts, guides, or marketing copy unless the user explicitly asks for content work.
+2. **`site-pages.json` from live URLs** — confirm each listed path returns 200 before adding it. If the verifier fails because a path is missing, **remove it from config**, never invent the page.
+3. **Verifier failures ≠ content gaps** — 404 on `/blog/` means delete `/blog/` from `section_indexes`, not "create a blog".
+4. **`.md` = wiring** — add plugins/routes/build output so **existing** HTML becomes `.md`; do not author new markdown pages to populate mirrors.
 
 ## When to use
 
@@ -18,12 +27,13 @@ Two layers, one workflow, **equal priority**: Google search and LLM agents both 
 ## Workflow (always in this order)
 
 1. **Audit** live site (or local build output if not deployed)
-2. **Report** gaps as Layer 0 (Google/crawl) vs Layer 1 (LLM retrieval) vs content (comparisons, thin pages)
-3. **Implement** fixes (each step is independently shippable).
+2. **Build `site-pages.json` from the audit** — only URLs that already exist and return 200. Remove template paths (`/blog/`, etc.) the site does not have. Set `require_feed: false` unless a real feed exists.
+3. **Report** gaps as Layer 0 (Google/crawl) vs Layer 1 (LLM retrieval) vs content (optional recommendations only — do not implement unless asked)
+4. **Implement** infrastructure fixes only (each step is independently shippable).
    - **Rails 8.1+:** [references/rails.md](references/rails.md) — `respond_to` `format.md`, static `public/sitemap.xml` at deploy; refuse dynamic SEO controllers.
    - **Static sites:** [references/accept-markdown-negotiation.md](references/accept-markdown-negotiation.md) — edge/middleware negotiation, build-time `.md` mirrors.
-4. **Verify** with `scripts/verify_seo.rb` against production URL
-5. **Hand off** project `site-pages.json` (customized paths). Re-run verifier from the skill — no need to copy `verify_seo.rb`.
+5. **Verify** with `scripts/verify_seo.rb` against production URL
+6. **Hand off** project `site-pages.json` (customized paths). Re-run verifier from the skill — no need to copy `verify_seo.rb`.
 
 ---
 
@@ -101,10 +111,10 @@ Right:
 - [ ] Internal links between related chapters/posts; prev/next on linear content
 - [ ] Unique, descriptive titles (not "Chapter 3" alone)
 
-### Content and GSC (human steps)
+### Content and GSC (human steps — recommend only, do not implement unless asked)
 
-- [ ] Thin or duplicate pages: expand or noindex
-- [ ] Comparison posts for high-intent queries (task-specific, with numbers) where relevant
+- [ ] Thin or duplicate pages: expand or noindex (suggest to owner; do not write filler)
+- [ ] Comparison posts for high-intent queries — **skip unless user explicitly requests content work**
 - [ ] GSC: verify property, submit sitemap, request indexing for home + one deep page once
 
 ### Optional (usually skip unless asked)
@@ -148,7 +158,7 @@ Curated Markdown at site root ([llmstxt.org](https://llmstxt.org/) format). READ
 
 **Static sites (Bridgetown, Jekyll, etc.):** For `/path/` serve `/path.md` (root → `/index.md`). **Single source of truth** (generate from same content as HTML). No YAML front matter in the served body.
 
-When auditing or implementing: for every URL in `site-pages.json` `html_paths` and `section_indexes`, derive the `.md` path and **ship it** if missing:
+When auditing or implementing: for every URL in `site-pages.json` `html_paths` and `section_indexes`, derive the `.md` path and **wire the route/build output** if missing (plugin, edge, generator). **Do not** create new markdown *content* or new pages — only expose existing content as `.md` mirrors.
 
 | HTML | `.md` mirror |
 |------|----------------|
@@ -221,6 +231,10 @@ Server-side logs for `.md`, `/llms.txt`, `/llms-full.txt` by User-Agent and refe
 | `SitemapsController` / dynamic `sitemap.xml` action (Rails) | Static `public/sitemap.xml` generated at deploy |
 | `public/*.md` mirror files (Rails) | `respond_to format.md` + `to_markdown` |
 | Dynamic `robots` or `feed` controllers when static suffices | `public/robots.txt`, `public/feed.xml` from deploy task |
+| Dummy / sample / placeholder blog posts | Infrastructure only — remove missing paths from `site-pages.json` instead |
+| Scaffolding `/blog/` or posts to pass verifier | Customize `site-pages.json` to match the real site |
+| Copying skill template paths without auditing | Build `site-pages.json` from live 200 URLs only |
+| `require_feed: true` when no blog exists | Keep `require_feed: false`; skip feed until owner ships posts |
 
 ---
 
@@ -252,13 +266,13 @@ Jekyll plugin, Next.js route, Nginx/Caddy — [acceptmarkdown.com](https://accep
 
 After every audit or implementation pass:
 
-1. Ensure project has `site-pages.json` (copy [site-pages.json](site-pages.json) template from skill to project root or `script/`, then edit)
-2. Edit `site-pages.json` — **required**. Lists `html_paths` and `section_indexes` (`.md` mirrors are derived and created by the skill if missing):
+1. Ensure project has `site-pages.json` (copy [site-pages.json](site-pages.json) template, then **replace every path with URLs that exist on the audited site**)
+2. Edit `site-pages.json` — **required**. Only list real `html_paths` and `section_indexes`. Omit `/blog/` unless the site already has a blog:
 
 ```json
 {
   "html_paths": ["/", "/guide/introduction/"],
-  "section_indexes": ["/guide/", "/blog/"],
+  "section_indexes": ["/guide/"],
   "check_llms_full_txt": true,
   "require_feed": false,
   "require_json_ld": true,
@@ -266,7 +280,7 @@ After every audit or implementation pass:
 }
 ```
 
-`.md` mirror paths are **derived automatically** for the verifier. **Static sites:** create each derived file if missing. **Rails 8.1+:** implement `respond_to format.md` instead — see [references/rails.md](references/rails.md).
+`.md` mirror paths are **derived automatically** for the verifier. **Static sites:** add build/plugin wiring for `.md` output from **existing** content — not new posts. **Rails 8.1+:** `respond_to format.md` — see [references/rails.md](references/rails.md).
 
 3. Run against **production** from project root (script stays in skill folder):
 
@@ -297,11 +311,12 @@ The script uses stdlib only (no gems). Exit code 1 if any check failed.
 
 ## Content beats infrastructure
 
-For AI citation quality (GEO), recommend content changes after infra is green:
+For AI citation quality (GEO), **recommend only** (do not implement unless the user asks for content work):
 
 - Direct quotations (~43% lift in cited studies)
 - Statistics in prose (~33%)
 - Authoritative outbound citations (~115% for low-ranked pages)
+- Comparison posts — skip unless explicitly requested
 
 Infrastructure gets agents **to** your text; content determines whether they **cite** you.
 

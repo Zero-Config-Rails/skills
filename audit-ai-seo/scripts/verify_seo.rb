@@ -31,6 +31,8 @@ class VerifySeo
     "require_markdown_negotiation" => true
   }.freeze
 
+  MISSING_PAGE_HINT = " — remove path from site-pages.json (do not create content to pass this check)".freeze
+
   def initialize(base_url, config_path: nil)
     @base = normalize_base(base_url)
     @config = load_config!(config_path)
@@ -94,6 +96,7 @@ class VerifySeo
 
         ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb https://example.com
 
+      List only URLs that already exist — trim template paths; never add dummy posts to match config.
       Or pass an explicit config path.
     MSG
   end
@@ -160,6 +163,12 @@ class VerifySeo
 
   def fail(name, detail)
     @results << Result.new(name:, status: :fail, detail:)
+  end
+
+  def missing_page_detail(code)
+    detail = "HTTP #{code}"
+    detail += MISSING_PAGE_HINT if code == 404 || code == 410
+    detail
   end
 
   def check_robots
@@ -248,7 +257,7 @@ class VerifySeo
       detail = ct.include?("markdown") ? "text/markdown" : "body looks like Markdown"
       pass("MD mirror #{path}", detail)
     else
-      fail("MD mirror #{path}", "HTTP #{res[:code]} or HTML response")
+      fail("MD mirror #{path}", missing_page_detail(res[:code]) + " or HTML response")
     end
 
     link = res[:headers]["link"].to_s
@@ -337,7 +346,7 @@ class VerifySeo
   def check_html_page(path, expected_md: nil)
     res = fetch(absolute(path))
     unless res[:code] == 200
-      fail("HTML #{path}", "HTTP #{res[:code]}")
+      fail("HTML #{path}", missing_page_detail(res[:code]))
       return
     end
 
@@ -514,6 +523,13 @@ class VerifySeo
 
     puts "-" * 60
     puts "Pass: #{grouped[:pass].length}  Warn: #{grouped[:warn].length}  Fail: #{grouped[:fail].length}"
+
+    if grouped[:fail].any? { |r| r.detail.include?(MISSING_PAGE_HINT) }
+      puts
+      puts "Config note: site-pages.json must list only URLs that exist on production."
+      puts "Trim missing paths from config — do not create dummy posts, scaffold blogs, or filler pages."
+    end
+
     puts
     puts "Optional external scanners:"
     puts "  https://acceptmarkdown.com"

@@ -15,7 +15,7 @@ Two layers, equal priority:
 | **Layer 0 — Google/crawl** | robots.txt, sitemap, meta tags, Open Graph, JSON-LD, feeds, canonical URLs |
 | **Layer 1 — LLM retrieval** | `/llms.txt`, `.md` mirrors, `Link` headers, `Accept: text/markdown` negotiation, Content-Signal |
 
-The skill **refuses debunked patterns** (`ai.txt`, AI-specific meta tags, User-Agent sniffing) and ends every audit or implementation with a live verifier run.
+The skill **refuses debunked patterns** (`ai.txt`, AI-specific meta tags, User-Agent sniffing) and **never creates dummy posts or sample content** — infrastructure only.
 
 ## When to use
 
@@ -29,8 +29,8 @@ Complete all steps below **before** invoking the skill. The workflow always ends
 
 ```
 1. Install the skill        →  .cursor/skills/ or .claude/skills/
-2. Add site-pages.json      →  project root or script/ (copy template, edit URLs)
-3. Invoke the skill         →  `/audit-ai-seo` in Agent chat (+ your production URL)
+2. Add site-pages.json      →  only URLs that exist on your site (trim template paths)
+3. Invoke the skill         →  `/audit-ai-seo` — infra only, no dummy content
 4. Verify (agent or you)    →  ruby .cursor/skills/audit-ai-seo/scripts/verify_seo.rb URL
 ```
 
@@ -96,7 +96,9 @@ For Claude Code, swap `.cursor` → `.claude`.
 
 ### 3. Configure `site-pages.json`
 
-Edit `script/site-pages.json` with **your** live URLs. The bundled file ships with example paths (`/guide/introduction/`, etc.) — the verifier will fail against a real site until you replace them.
+Edit `site-pages.json` with **your** live URLs only. The bundled template uses guide-style example paths — **remove `/blog/` and any path your site does not have**. Never add dummy posts to make the verifier pass; trim config instead.
+
+**Important:** If the verifier fails on `/blog/` but you have no blog, delete `/blog/` from `section_indexes` — do not scaffold a blog.
 
 **Site map mental model** — how the keys relate:
 
@@ -110,7 +112,7 @@ https://example.com/
     └── introduction.md        ← derived automatically
 ```
 
-You only list HTML paths. The verifier and skill derive `.md` mirrors using the mapping below. If a `.md` file does not exist yet, the skill must **create it** during implementation.
+You only list HTML paths that **already exist**. The verifier derives `.md` mirror URLs to check. The skill wires build/routes for those mirrors from **existing** content — it does not author new posts or pages.
 
 #### `html_paths` (required)
 
@@ -127,10 +129,10 @@ You only list HTML paths. The verifier and skill derive `.md` mirrors using the 
 | Guide only | `["/", "/guide/introduction/", "/guide/chapter-2/"]` |
 
 ```json
-"html_paths": ["/", "/guide/introduction/", "/blog/2024/launch-post/"]
+"html_paths": ["/", "/guide/introduction/"]
 ```
 
-Use trailing slashes if that is how your site serves URLs (`/guide/introduction/` not `/guide/introduction`).
+Use trailing slashes if that is how your site serves URLs (`/guide/introduction/` not `/guide/introduction`). **Do not** copy example blog paths unless those URLs exist.
 
 **`.md` mirrors (automatic)** — derived from each `html_paths` and `section_indexes` entry:
 
@@ -160,7 +162,7 @@ Rule: strip trailing slash; `/` → `/index.md`; otherwise append `.md`.
 **Examples:**
 
 ```json
-"section_indexes": ["/guide/", "/blog/"]
+"section_indexes": ["/guide/"]
 ```
 
 Single-page marketing site:
@@ -169,7 +171,7 @@ Single-page marketing site:
 "section_indexes": []
 ```
 
-Blog only:
+**Only if the site already has a blog:**
 
 ```json
 "section_indexes": ["/blog/"]
@@ -195,7 +197,7 @@ Blog only:
 
 **What:** Whether to check `/feed.xml` exists and looks like Atom/RSS.
 
-**When `true`:** Site has a blog or publishes feed updates.
+**When `true`:** Site already has a blog with real posts and `/feed.xml`. **Default `false`** — do not enable to force feed generation.
 
 **When `false`:** Static landing page with no feed.
 
@@ -242,24 +244,24 @@ Full implementation checklist: [references/accept-markdown-negotiation.md](refer
 
 #### Full examples by site type
 
-**Docs + blog** (default template in [site-pages.json](site-pages.json)):
+**Guide / docs** (default template in [site-pages.json](site-pages.json)):
 
 ```json
 {
   "html_paths": ["/", "/guide/introduction/"],
-  "section_indexes": ["/guide/", "/blog/"],
+  "section_indexes": ["/guide/"],
   "check_llms_full_txt": true,
-  "require_feed": true,
+  "require_feed": false,
   "require_json_ld": true,
   "require_markdown_negotiation": true
 }
 ```
 
-**Blog only:**
+**Blog site** (only when blog already exists — replace slug with a real post URL):
 
 ```json
 {
-  "html_paths": ["/", "/blog/hello-world/"],
+  "html_paths": ["/", "/blog/your-real-post-slug/"],
   "section_indexes": ["/blog/"],
   "check_llms_full_txt": false,
   "require_feed": true,
@@ -294,7 +296,7 @@ With the skill installed and `site-pages.json` in your project, open the **proje
 That is the fastest way to load the skill. Add your site in the same message:
 
 ```
-/audit-ai-seo https://myapp.com
+/audit-ai-seo https://myapp.com — infra only, no dummy content
 ```
 
 Or follow up immediately with context:
@@ -312,7 +314,7 @@ To confirm the skill is installed: **Cursor Settings → Rules** — `audit-ai-s
 **Claude Code** — from the project directory:
 
 ```
-/audit-ai-seo https://myapp.com
+/audit-ai-seo https://myapp.com — infra only, no dummy content
 ```
 
 ## Agent workflow
@@ -321,7 +323,7 @@ What the skill does once invoked:
 
 1. Audit the live site (or local build output)
 2. Report gaps as Layer 0 vs Layer 1 vs content
-3. Implement fixes (each step is independently shippable)
+3. Implement **infrastructure** fixes only (each step is independently shippable). Do not add posts or placeholder content.
 4. Verify from `.cursor/skills/audit-ai-seo/scripts/verify_seo.rb` (or `.claude/skills/…`) against **production**
 5. Re-run after deploys — same skill script, same project `site-pages.json`
 

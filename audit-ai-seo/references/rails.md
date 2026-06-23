@@ -150,20 +150,20 @@ Stay in layouts/partials/view helpers (HTML responses). Unchanged from main skil
 
 ## `site-pages.json` for Rails
 
-List real routes the verifier should probe — not static file paths:
+List real routes the verifier should probe — **only paths that return 200 today**. Do not create `Article` records or dummy posts to match this config.
 
 ```json
 {
-  "html_paths": ["/", "/articles/hello-world"],
-  "section_indexes": ["/blog"],
+  "html_paths": ["/", "/articles/1"],
+  "section_indexes": [],
   "check_llms_full_txt": false,
-  "require_feed": true,
+  "require_feed": false,
   "require_json_ld": true,
   "require_markdown_negotiation": true
 }
 ```
 
-Verifier derives `.md` URLs (`/articles/hello-world.md`) to confirm format routes work; negotiation checks hit the same HTML paths with `Accept: text/markdown`.
+Verifier derives `.md` URLs (`/articles/1.md`) to confirm format routes work; negotiation checks hit the same HTML paths with `Accept: text/markdown`.
 
 ---
 
